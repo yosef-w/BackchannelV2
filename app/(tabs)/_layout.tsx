@@ -489,7 +489,7 @@ export default function TabsLayout() {
                 Closing reveals the current tab untouched (previousView
                 bookkeeping is gone: the router state never changed). */}
             {notificationsOpen && (
-              <View style={StyleSheet.absoluteFillObject}>
+              <View style={StyleSheet.absoluteFill}>
                 <ScreenContainer variant="content" style={styles.overlayColumn}>
                   <NotificationsFeedView
                     onBack={() => {
@@ -517,7 +517,7 @@ export default function TabsLayout() {
                 MessagesView keep a live host view. */}
             {publicProfileData &&
               (userType === "sponsor" ? (
-                <View style={StyleSheet.absoluteFillObject}>
+                <View style={StyleSheet.absoluteFill}>
                   <ScreenContainer variant="content" style={styles.overlayColumn}>
                     <ApplicantPublicProfileView
                       userData={publicProfileData}
@@ -526,7 +526,7 @@ export default function TabsLayout() {
                   </ScreenContainer>
                 </View>
               ) : (
-                <View style={StyleSheet.absoluteFillObject}>
+                <View style={StyleSheet.absoluteFill}>
                   <ScreenContainer variant="content" style={styles.overlayColumn}>
                     <SponsorPublicProfileView
                       userData={publicProfileData}
@@ -580,7 +580,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.ink,
   },
-  // Overlays are StyleSheet.absoluteFillObject (full-bleed) — cap their
+  // Overlays are StyleSheet.absoluteFill (full-bleed) — cap their
   // inner content at the reading-column width on iPad instead of letting
   // NotificationsFeedView / the public-profile views stretch edge to edge.
   // flex:1 makes the cap fill the overlay's height too, since ScreenContainer

@@ -10,7 +10,7 @@
 // navTranslateY shared value (HomeView is the only writer). Count pills
 // per route arrive via `badges`.
 
-import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
+import type { BottomTabBarProps } from "expo-router/js-tabs";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import {
@@ -316,7 +316,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   wash: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor:
       Platform.OS === "android"
         ? "rgba(255,255,255,0.9)"
