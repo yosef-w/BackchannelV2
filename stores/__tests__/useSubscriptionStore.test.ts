@@ -66,10 +66,16 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
-describe("PREMIUM_ENABLED = false (current shipped config)", () => {
+describe("PREMIUM_ENABLED = false", () => {
   let useSubscriptionStore: typeof import("../useSubscriptionStore").useSubscriptionStore;
   beforeEach(() => {
     jest.resetModules();
+    jest.doMock("@/constants/config", () => ({
+      PREMIUM_ENABLED: false,
+      RC_ENTITLEMENT_ID: "Backchannel Pro",
+      REVENUECAT_API_KEY_IOS: "ios-key",
+      REVENUECAT_API_KEY_ANDROID: "android-key",
+    }));
     ({ useSubscriptionStore } = require("../useSubscriptionStore"));
   });
 
