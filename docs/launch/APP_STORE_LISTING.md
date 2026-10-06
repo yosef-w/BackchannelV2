@@ -1,6 +1,6 @@
 # App Store Listing: BackChannel 1.0
 
-Paste-ready copy for App Store Connect. Character counts were computed with a script, not by eye (see "Count check" at the bottom). Premium is disabled (`PREMIUM_ENABLED=false`), so nothing here mentions plans, pricing, or daily limits.
+Paste-ready copy for App Store Connect. Character counts were computed with a script, not by eye (see "Count check" at the bottom). Premium ships on in v1 (`PREMIUM_ENABLED=true` as of 2026-10-05): the description and What's New deliberately don't name prices or daily limits (those live in the app and in App Store Connect's subscription metadata, which is the only place Apple wants them), but the review notes in section 10 describe the subscription. App Store Connect also needs the Terms of Use (EULA) URL set to `https://backchannelapp.netlify.app/terms.html`, whose section 11 now covers auto-renewal, cancellation, and refunds.
 
 Items marked **[CONFIRM]** are assumptions the founder should verify before submitting.
 
@@ -235,16 +235,19 @@ Every report is emailed to our moderation inbox, where a person reviews it and a
 ACCOUNT DELETION (Guideline 5.1.1(v))
 Account > Privacy & Security > Delete Account. This removes the account and its data, including for accounts created with Apple / Hide My Email. [CONFIRM: SSO-only deletion works end-to-end on the backend, see §W #3.]
 
-NO PAID FEATURES
-This version has no in-app purchases or subscriptions.
+IN-APP PURCHASES (Guideline 3.1.1 / 3.1.2)
+One auto-renewable subscription, "BackChannel Pro", for applicants only. The free app is fully usable without it. Pro raises the daily limit on expressions of interest from 2 to 5 and unlocks actions in the job marketplace. Sponsors are never asked to pay.
+Where to find it: Account tab > "Upgrade to Premium" opens the plan picker and checkout. The same checkout appears if an applicant reaches the daily limit on the Feed, or taps a gated action in the marketplace. Every paywall shows the price, billing period, auto-renewal terms, and links to Terms of Use and Privacy Policy, and can be dismissed.
+Restore: Account tab > "Restore Purchases" (always visible, also on the checkout sheet). Manage: Account tab > "Manage Subscription" opens Apple's subscription settings.
+The demo applicant account (Sarah Chen) is on the free tier so the paywall can be reached; purchases in review run through the sandbox. [CONFIRM: subscription products are approved in App Store Connect and attached to the RevenueCat offering before submitting, else the plan picker shows an empty state.]
 
 PERMISSIONS
 Photos (profile picture, résumé upload), and notifications (check-in reminders), each requested in context.
 
-Contact for questions during review: Yosef Wolday, [phone], yosefwolday@yahoo.com.
+Contact for questions during review: Yosef Wolday, yosefwolday@yahoo.com (phone in the App Review Information fields).
 ```
 
-Decisions taken 2026-10-03: demo pair is Sarah Chen / Emily Rodriguez (the only seeded pair with a match, thread, and referral); the moderation promise is "promptly," not "within 24 hours" (keep `docs/ops/MODERATION_RUNBOOK.md`'s 24h target as the internal goal; tighten the public wording later without a review); ship without a stand-alone Block action and add one only if a reviewer asks. Remaining [CONFIRM] items depend on the backend (§W #3 SSO deletion, §W #4–5 moderation email and MX, Apple private-relay domain registration). Fill in the phone number, and switch the contact email to support@backchannel.app once it receives mail.
+Decisions taken 2026-10-03: demo pair is Sarah Chen / Emily Rodriguez (the only seeded pair with a match, thread, and referral); the moderation promise is "promptly," not "within 24 hours" (keep `docs/ops/MODERATION_RUNBOOK.md`'s 24h target as the internal goal; tighten the public wording later without a review); ship without a stand-alone Block action and add one only if a reviewer asks. Remaining [CONFIRM] items depend on the backend (§W #3 SSO deletion, §W #4–5 moderation email and MX, Apple private-relay domain registration). The phone number goes only in App Store Connect's required App Review Information fields (not public); switch the contact email to support@backchannel.app once it receives mail.
 
 ---
 

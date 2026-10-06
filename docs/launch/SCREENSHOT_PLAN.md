@@ -1,6 +1,6 @@
 # Screenshot Plan and App Preview
 
-Sizes: iPhone 6.9" (1320 x 2868) and iPad 13" (2064 x 2752). The app sets `supportsTablet: true`, so iPad screenshots are required. Capture from the real app in a simulator on each device class, not from a mockup, so nothing is shown that the app doesn't do. No pricing, plans, or limits appear anywhere (Premium is disabled).
+Sizes: iPhone 6.9" (1320 x 2868) and iPad 13" (2064 x 2752). The app sets `supportsTablet: true`, so iPad screenshots are required. Capture from the real app in a simulator on each device class, not from a mockup, so nothing is shown that the app doesn't do. Premium is on in v1, but keep pricing, plans, and limits out of the screenshots anyway: prices change and Apple requires the screenshots to match the current price, which is easy to get wrong. Show the free experience.
 
 Style: light "ink and paper" UI is the brand, so let the app be the visual. Captions in DM Serif Display, ink on paper, top third of the frame, with one word in italic (the app's existing `serifItalic` accent), max 6 words each. Keep one consistent frame treatment across all shots.
 

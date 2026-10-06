@@ -32,7 +32,7 @@ export const API_BASE_URL =
  *   gated features will be enforced. Set to true when you are ready to test
  *   or ship paid subscriptions.
  */
-export const PREMIUM_ENABLED = false;
+export const PREMIUM_ENABLED = true;
 
 /**
  * SSO_ENABLED — Sign in with Apple / Google (docs/BACKEND_CHANGES_NEEDED.md §S)
