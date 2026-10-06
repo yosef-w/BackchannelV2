@@ -45,7 +45,7 @@ export function DecisionStamp({ label }: { label: string }) {
 
 const styles = StyleSheet.create({
   host: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: "center",
     justifyContent: "center",
     paddingBottom: 120,

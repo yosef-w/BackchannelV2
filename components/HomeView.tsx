@@ -2367,7 +2367,7 @@ export function HomeView({
                   one we've already liked, most commonly because "Review
                   again" replayed the deck — the "already seen" overlay
                   below). Giving this its own flex:1 box means an
-                  absoluteFillObject overlay covers exactly the card area,
+                  absoluteFill overlay covers exactly the card area,
                   not the header above it. */}
               <View style={styles.cardStage}>
                 {/* Hinge-style: one big vertically-scrolling profile with a
@@ -2773,7 +2773,7 @@ const styles = StyleSheet.create({
   },
   // Wraps the profile scroll + whatever floats on top of it (the normal
   // Pass/Connect buttons, or the "already liked" overlay). Its bounds are
-  // exactly the card area below the header, so an absoluteFillObject
+  // exactly the card area below the header, so an absoluteFill
   // overlay inside it never bleeds over the header/progress bar.
   cardStage: { flex: 1 },
   // Small dark scrim circle so a white Flag icon reads against ANY plate
