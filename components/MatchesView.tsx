@@ -22,7 +22,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
     ChevronRight,
     Clock,
-    Heart,
+    Handshake,
     MessageCircle,
     Zap,
 } from "@/components/ui/icons";
@@ -614,12 +614,46 @@ export function MatchesView({
   // Row-grouping callbacks for renderMatchRows (components/matches/matchRowBuilders.tsx):
   // one row per counterpart, opening the role picker when they matched on
   // multiple jobs, otherwise viewing/messaging that single match directly.
+  // Every detail surface on this screen is a root-level RN Modal, and the
+  // "See all" list (MatchListScreen → EditorScreen) is one too. iOS won't
+  // present a second sibling Modal while the first is up — it queues it,
+  // so a row tapped inside a list appeared to do nothing until the list
+  // was closed, then popped. Opening from a list therefore closes the
+  // list first (its slide-out), presents the detail on the next tick, and
+  // remembers the group so the list slides back once every detail is gone.
+  const returnToGroupRef = useRef<typeof expandedGroup>(null);
+  const viaList = <A extends unknown[]>(fn: (...args: A) => void) =>
+    (...args: A) => {
+      if (!expandedGroup) {
+        fn(...args);
+        return;
+      }
+      returnToGroupRef.current = expandedGroup;
+      setExpandedGroup(null);
+      setTimeout(() => fn(...args), 380);
+    };
+  const anyDetailOpen =
+    !!activeModal ||
+    !!interestedSponsorJob ||
+    !!matchedProfileJob ||
+    srJobDetailVisible ||
+    !!confirmingWithdrawReferral;
+  useEffect(() => {
+    if (anyDetailOpen || !returnToGroupRef.current) return;
+    const group = returnToGroupRef.current;
+    returnToGroupRef.current = null;
+    const t = setTimeout(() => setExpandedGroup(group), 350);
+    return () => clearTimeout(t);
+  }, [anyDetailOpen]);
+
   const matchRowCallbacks = {
-    onOpenRoleGroup: (group: {
-      items: Match[];
-      getMessageUserId: (m: Match) => string | undefined;
-    }) => setActiveModal({ kind: "roleGroup", group }),
-    onOpenProfile: openProfile,
+    onOpenRoleGroup: viaList(
+      (group: {
+        items: Match[];
+        getMessageUserId: (m: Match) => string | undefined;
+      }) => setActiveModal({ kind: "roleGroup", group }),
+    ),
+    onOpenProfile: viaList(openProfile),
     onMessageTapped: (match: Match, userId: string | undefined) => {
       trackMatchMessageTapped({ jobId: match.jobId });
       onNavigateToMessages?.(match.jobId ?? "", userId);
@@ -801,7 +835,7 @@ export function MatchesView({
         res.matched
           ? `It's a match with ${applicant.name.split(" ")[0]}!`
           : res.message ||
-              `Sent — ${applicant.name.split(" ")[0]} will be notified.`,
+              `Sent. ${applicant.name.split(" ")[0]} will be notified.`,
         res.matched ? "success" : "info",
       );
     } catch (err) {
@@ -825,7 +859,7 @@ export function MatchesView({
         lower.includes("log in");
       showToast(
         looksLikeSession
-          ? "Your session expired — please sign out and back in, then try again."
+          ? "Your session expired. Sign out and back in, then try again."
           : looksLikeNotOwned
             ? "That job is no longer active on your side. Pull to refresh and try again."
             : `Couldn't connect right now: ${msg}`,
@@ -849,7 +883,7 @@ export function MatchesView({
       showToast(
         res.matched
           ? `It's a match with ${request.applicantName.split(" ")[0]}!`
-          : `Sent — ${request.applicantName.split(" ")[0]} will see you under Interested in You.`,
+          : `Sent. ${request.applicantName.split(" ")[0]} will see you under Interested in You.`,
         res.matched ? "success" : "info",
       );
     } catch (err) {
@@ -865,7 +899,7 @@ export function MatchesView({
         msg.toLowerCase().includes("not found");
       showToast(
         looksLikeNotOwned
-          ? "You need to sponsor this job first — head to the Jobs tab."
+          ? "Sponsor this job first. You'll find it in the Jobs tab."
           : "Couldn't connect right now. Please try again.",
         "error",
       );
@@ -1095,7 +1129,7 @@ export function MatchesView({
                   : `${staleReferrals.length} referrals need a status update`}
               </Text>
               <Text style={styles.staleReferralSubtitle}>
-                No update in over a week — check in now
+                No update in over a week. Check in now
               </Text>
             </View>
             <ChevronRight size={18} color={Colors.muted} />
@@ -1119,17 +1153,17 @@ export function MatchesView({
             withdrawingReferralId={withdrawingReferralId}
             expandedGroup={expandedGroup}
             onSetExpandedGroup={setExpandedGroup}
-            onSelectSponsorRequest={(request) =>
-              setActiveModal({ kind: "sponsorRequest", request })
-            }
-            onSelectInterestedApplicant={(applicant) =>
-              setActiveModal({ kind: "interestedApplicant", applicant })
-            }
-            onOpenProfile={openProfile}
-            onConfirmWithdrawReferral={setConfirmingWithdrawReferral}
-            onSelectReferral={(referral) =>
-              setActiveModal({ kind: "referral", referral })
-            }
+            onSelectSponsorRequest={viaList((request) =>
+              setActiveModal({ kind: "sponsorRequest", request }),
+            )}
+            onSelectInterestedApplicant={viaList((applicant) =>
+              setActiveModal({ kind: "interestedApplicant", applicant }),
+            )}
+            onOpenProfile={viaList(openProfile)}
+            onConfirmWithdrawReferral={viaList(setConfirmingWithdrawReferral)}
+            onSelectReferral={viaList((referral) =>
+              setActiveModal({ kind: "referral", referral }),
+            )}
             matchRowCallbacks={matchRowCallbacks}
           />
         ) : (
@@ -1151,14 +1185,14 @@ export function MatchesView({
             referralsError={referralsError}
             expandedGroup={expandedGroup}
             onSetExpandedGroup={setExpandedGroup}
-            onSelectInterestedSponsor={openInterestedSponsor}
-            onSelectWaitlistedJob={(job) =>
-              setActiveModal({ kind: "waitlistedJob", job })
-            }
-            onSelectJob={openJob}
-            onSelectReferral={(referral) =>
-              setActiveModal({ kind: "referral", referral })
-            }
+            onSelectInterestedSponsor={viaList(openInterestedSponsor)}
+            onSelectWaitlistedJob={viaList((job) =>
+              setActiveModal({ kind: "waitlistedJob", job }),
+            )}
+            onSelectJob={viaList(openJob)}
+            onSelectReferral={viaList((referral) =>
+              setActiveModal({ kind: "referral", referral }),
+            )}
             matchRowCallbacks={matchRowCallbacks}
           />
         )}
@@ -1259,11 +1293,7 @@ export function MatchesView({
             image: selectedInterestedApplicant.image,
             role: selectedInterestedApplicant.roleType,
           }}
-          badge={{
-            label: "Interested in Your Job",
-            color: Colors.danger,
-            bgColor: Colors.dangerLight,
-          }}
+          badge={{ label: "Interested", tone: "active" }}
           roleContext={
             selectedInterestedApplicant.jobTitle
               ? {
@@ -1276,9 +1306,9 @@ export function MatchesView({
           primaryCta={{
             label:
               likingApplicantId === selectedInterestedApplicant.applicantUserId
-                ? "Connecting..."
+                ? "Connecting…"
                 : `Connect with ${selectedInterestedApplicant.name.split(" ")[0]}`,
-            icon: <Heart color={Colors.paper} size={18} strokeWidth={2.5} />,
+            icon: <Handshake color={Colors.paper} size={18} strokeWidth={2.5} />,
             loading:
               likingApplicantId === selectedInterestedApplicant.applicantUserId,
             onPress: () => handleLikeBackApplicant(selectedInterestedApplicant),
@@ -1368,8 +1398,7 @@ export function MatchesView({
             label: selectedInterestedSponsor.likedAt
               ? `Wants to connect · ${getRelativeTime(selectedInterestedSponsor.likedAt)}`
               : "Wants to connect with you",
-            color: Colors.danger,
-            bgColor: Colors.dangerLight,
+            tone: "active",
           }}
           roleContext={
             selectedInterestedSponsor.jobTitle ||
@@ -1392,9 +1421,9 @@ export function MatchesView({
           primaryCta={{
             label:
               likingBackSponsorId === selectedInterestedSponsor.likeId
-                ? "Connecting..."
+                ? "Connecting…"
                 : `Connect with ${selectedInterestedSponsor.firstName}`,
-            icon: <Heart color={Colors.paper} size={18} strokeWidth={2.5} />,
+            icon: <Handshake color={Colors.paper} size={18} strokeWidth={2.5} />,
             loading: likingBackSponsorId === selectedInterestedSponsor.likeId,
             onPress: () => handleLikeBackSponsor(selectedInterestedSponsor),
           }}
@@ -1420,9 +1449,9 @@ export function MatchesView({
             cta={{
               label:
                 likingBackSponsorId === selectedInterestedSponsor.likeId
-                  ? "Connecting..."
+                  ? "Connecting…"
                   : `Connect with ${selectedInterestedSponsor.firstName}`,
-              icon: <Heart color={Colors.paper} size={18} strokeWidth={2.5} />,
+              icon: <Handshake color={Colors.paper} size={18} strokeWidth={2.5} />,
               loading:
                 likingBackSponsorId === selectedInterestedSponsor.likeId,
               onPress: () => handleLikeBackSponsor(selectedInterestedSponsor),
@@ -1572,7 +1601,7 @@ export function MatchesView({
             // Legacy likes can arrive without a job to thread on — the
             // match itself is real, so point at where it now lives.
             showToast(
-              "You're matched — find them under Matched Opportunities.",
+              "You're matched. Find them under Matched.",
               "info",
             );
           }
@@ -1598,15 +1627,15 @@ const styles = StyleSheet.create({
     color: Colors.body,
     marginTop: 4,
   },
+  // Flat between hairlines, like every other row group on this screen.
   staleReferralBanner: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    backgroundColor: Colors.offWhite,
-    borderWidth: 1,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
     borderColor: Colors.border,
-    borderRadius: 16,
-    padding: 14,
+    paddingVertical: 14,
     marginBottom: 30,
   },
   staleReferralIconCircle: {
@@ -1667,7 +1696,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   undoToastBtn: {
-    // White on the dark (#1A1A1A) toast — a black button would vanish.
+    // White on the ink toast: a black button would vanish.
     backgroundColor: Colors.paper,
     borderRadius: 10,
     paddingVertical: 6,

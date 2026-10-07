@@ -1,4 +1,5 @@
-import { CheckCircle, ChevronRight, X } from "@/components/ui/icons";
+import { ChevronRight, X } from "@/components/ui/icons";
+import { StatusChip } from "@/components/ui/StatusChip";
 import { BlurView } from "expo-blur";
 import React from "react";
 import {
@@ -66,6 +67,8 @@ export function TopApplicantsModal({
           <TouchableOpacity
             onPress={onClose}
             style={jobsModalStyles.closeButton}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
           >
             <X color={Colors.ink} size={24} />
           </TouchableOpacity>
@@ -160,10 +163,7 @@ export function TopApplicantsModal({
                     so the row's alignItems:"center" keeps it vertically
                     centered against the avatar, not pinned to the name. */}
                 {applicant.status === "MATCHED" && (
-                  <View style={styles.applicantMatchedTag}>
-                    <CheckCircle size={11} color={Colors.ink} />
-                    <Text style={styles.applicantMatchedTagText}>Matched</Text>
-                  </View>
+                  <StatusChip label="Matched" tone="active" />
                 )}
                 {/* Chevron now a visual affordance only — the entire
                     row above handles the tap. */}
@@ -196,21 +196,6 @@ const styles = StyleSheet.create({
   },
   applicantName: { fontSize: 16, fontWeight: "700", color: Colors.ink },
   applicantRole: { fontSize: 13, color: Colors.body, marginTop: 2 },
-  applicantMatchedTag: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: Colors.surface,
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  applicantMatchedTagText: {
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 0.2,
-    color: Colors.ink,
-  },
   messageApplicantBtn: {
     backgroundColor: Colors.ink,
     width: 40,
@@ -218,10 +203,5 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: Colors.ink,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
   },
 });

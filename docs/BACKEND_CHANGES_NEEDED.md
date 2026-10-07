@@ -1,10 +1,10 @@
 # Backend Changes Needed
 
-**Last updated:** 2026-09-22 (added **§X** — two ready-to-apply fixes, written up instead of pushed as a branch: transactional-email deep-linking + résumé-parse timeout race)
+**Last updated:** 2026-09-27 (added **§AE** — pulled the `backchannel.it.com` universal-link checklist and the support-email domain decision out into their own section addressed to Nico specifically, so they don't get missed; added **§Y** — real "unlimited" premium deck volume, not urgent, queued behind PREMIUM_ENABLED and server-side entitlement verification; added **§X** — two ready-to-apply fixes, written up instead of pushed as a branch: transactional-email deep-linking + résumé-parse timeout race)
 **Frontend repo:** `BackchannelV2`
 **Backend repo:** `Backchannel-backend/BackChannel-backend`
 
-> **Open items:** **§X** — two ready-to-apply fixes (🟠 medium, new, 2026-09-22), written up as full explanation + exact diff rather than pushed as a branch/PR since this is Nico's repo: transactional emails (verify/reset/welcome) link to the marketing website instead of deep-linking into the app, and a Daphne-proxy-timeout-vs-Anthropic-call race that produces false "resume couldn't be parsed" errors on requests that actually succeeded — see §X. **§W** — App Store submission alignment (🔴 high, new, 2026-09-22): the rewritten Privacy Policy/Terms going live at `backchannelapp.netlify.app` state things the backend has to keep true (résumé only after match → §V #1 is now launch-blocking), SSO-only accounts (Apple "Hide My Email") have no working path to delete their account (Apple 5.1.1(v)), and support/moderation email needs `Reply-To` + `MODERATION_ALERT_EMAIL` + Apple relay-domain registration — see §W. **§V** — security audit (🔴 high): a joint frontend+backend read-only audit ahead of App Store submission found no broken authorization or SQL injection (both clean), but the sponsor feed returns applicant phone/DOB/résumé before any match, uploaded images are public-read forever, and Django + a few libs are past their security-support window. Entirely backend-owned — see §V for the full breakdown and fix order. **§F** — feed relevance (🔴 high): signup answers barely shape what users see — the sponsored half of the applicant deck is `ORDER BY random()` and never scored, and the sponsor deck shows every applicant in the DB rather than candidates for the sponsored job (fix order in §F). **§S** — SSO (Apple + Google): **both sides are code-complete** — backend endpoints shipped on their `develop` (PR #152), frontend wired to the implemented contract behind `SSO_ENABLED = false`. What remains is config, not code: Apple/Google console credentials → backend env vars + frontend env vars, backend develop→main deploy, then flip the flag and EAS build (full checklist in §S). **§B** — confirm whether `GET /api/profile/` returns `BIO`; if not, add it (small, but it's silent user-visible data loss on re-login). **§L** — drop/ignore unused profile columns (street/ZIP/country/phone/DOB/LinkedIn — cleanup + PII minimization, low priority, coordinate timing with backend; do **not** drop `PORTFOLIO_URL`, it's still live).
+> **Open items:** **§AE** — for Nico specifically (🟠 medium, new, 2026-09-27): what `backchannel.it.com` needs before we switch email links to it (three items: serve an AASA file, a Cloudflare skip rule for `/.well-known/*`, and a fallback page — full checklist + copy-pasteable JSON in §AE), plus the support email domain having no MX record (blocks launch — pick a domain, add MX, tell us if the address changes). **§X** — two ready-to-apply fixes (🟠 medium, new, 2026-09-22), written up as full explanation + exact diff rather than pushed as a branch/PR since this is Nico's repo: transactional emails (verify/reset/welcome) link to the marketing website instead of deep-linking into the app, and a Daphne-proxy-timeout-vs-Anthropic-call race that produces false "resume couldn't be parsed" errors on requests that actually succeeded — see §X. **§W** — App Store submission alignment (🔴 high, new, 2026-09-22): the rewritten Privacy Policy/Terms going live at `backchannelapp.netlify.app` state things the backend has to keep true (résumé only after match → §V #1 is now launch-blocking), SSO-only accounts (Apple "Hide My Email") have no working path to delete their account (Apple 5.1.1(v)), and support/moderation email needs `Reply-To` + `MODERATION_ALERT_EMAIL` + Apple relay-domain registration — see §W. **§V** — security audit (🔴 high): a joint frontend+backend read-only audit ahead of App Store submission found no broken authorization or SQL injection (both clean), but the sponsor feed returns applicant phone/DOB/résumé before any match, uploaded images are public-read forever, and Django + a few libs are past their security-support window. Entirely backend-owned — see §V for the full breakdown and fix order. **§F** — feed relevance (🔴 high): signup answers barely shape what users see — the sponsored half of the applicant deck is `ORDER BY random()` and never scored, and the sponsor deck shows every applicant in the DB rather than candidates for the sponsored job (fix order in §F). **§S** — SSO (Apple + Google): **both sides are code-complete** — backend endpoints shipped on their `develop` (PR #152), frontend wired to the implemented contract behind `SSO_ENABLED = false`. What remains is config, not code: Apple/Google console credentials → backend env vars + frontend env vars, backend develop→main deploy, then flip the flag and EAS build (full checklist in §S). **§B** — confirm whether `GET /api/profile/` returns `BIO`; if not, add it (small, but it's silent user-visible data loss on re-login). **§L** — drop/ignore unused profile columns (street/ZIP/country/phone/DOB/LinkedIn — cleanup + PII minimization, low priority, coordinate timing with backend; do **not** drop `PORTFOLIO_URL`, it's still live).
 >
 > Shipped items are removed to keep this lean; the backend's record now lives in its [`KNOWN_ISSUES.md`](../../Backchannel-backend/BackChannel-backend/docs/KNOWN_ISSUES.md) "Recently fixed" list (their `BACKEND_CHANGES_SHIPPED.md` was retired in the 2026-07 docs overhaul).
 
@@ -27,12 +27,12 @@ Nothing here is a redesign. Every item is a small, well-located change; file:lin
 
 ### 🔴 Apple 5.1.1(v) — SSO-only accounts can't delete themselves
 
-3. **`/api/account/delete/` is password-gated, and passwordless accounts have no working path.** `services/auth.py:607-610`: `if not users_q.has_password(user_id): return Result.bad_request(_NO_PASSWORD_MSG)`. The app's fallback for a `has_password:false` user is "Set a password first," which emails a forgot-password link to `data.personal.email`. For an Apple **Hide My Email** user that's a `@privaterelay.appleid.com` address — Apple only forwards mail from a sender domain registered under *Certificates, IDs & Profiles → Services → Sign in with Apple for Email Communication* (with SPF/DKIM), and nothing indicates `backchannel.app` is registered, so the email is silently dropped while the UI says "Check your inbox." Apple reviewers test exactly this (Sign in with Apple + Hide My Email → delete account). **Ask:** accept a fresh identity token as the re-auth for deletion when the account has no password. Proposed contract, mirroring what `/api/auth/sso/` already verifies:
+3. **`/api/account/delete/` is password-gated, and passwordless accounts have no working path.** `services/auth.py:607-610`: `if not users_q.has_password(user_id): return Result.bad_request(_NO_PASSWORD_MSG)`. Apple reviewers test exactly this (Sign in with Apple + Hide My Email → delete account), and the old fallback ("Set a password first," which emails a forgot-password link) silently fails for Apple's `@privaterelay.appleid.com` addresses unless the sending domain is registered for Apple's private relay (still true regardless — see the ask below). **Frontend is now done** (`components/profile/PrivacySecurityScreen.tsx`, `lib/auth-api.ts`'s `deleteAccountWithSso`): a passwordless account's Delete Account screen now shows "Verify with Apple/Google to Delete" instead of the email gate, re-runs `signInWithApple()`/`signInWithGoogle()` on tap, and POSTs:
    ```
    POST /api/account/delete/
    { "provider": "apple" | "google", "identity_token": "<fresh token>", "refresh_token": "<current>" }
    ```
-   Same verification path as sign-in (must resolve to the *same* `sso_identities` row as the caller's `user_id`; reject otherwise), then the existing purge. Keep the password form for password accounts. Frontend will re-run `signInWithApple()` / `signInWithGoogle()` on tap and POST the token — no other UI change. **Also (ops, not code):** register the sending domain for Apple's private relay regardless — it's what lets *verification / reset / work-email* mail reach Hide-My-Email users at all, not just deletion. Related, frontend-side: after a reset-link password set, we'll flip `hasPassword` locally so the gate doesn't reappear.
+   **This is the one remaining blocker for App Store submission** — the frontend call above hits the *existing* password-only endpoint today and gets the same 400 `_NO_PASSWORD_MSG` an SSO user always got, so nothing is fixed for a reviewer until the backend side ships. **Ask (unchanged):** accept that payload shape as the re-auth for deletion when the account has no password — same verification path as sign-in (must resolve to the *same* `sso_identities` row as the caller's `user_id`; reject otherwise), then the existing purge. Keep the password form for password accounts. **Also (ops, not code):** register the sending domain for Apple's private relay regardless — it's what lets *verification / reset / work-email* mail reach Hide-My-Email users at all, not just deletion.
 
 ### 🟠 Support & moderation email — reports are about to start arriving
 
@@ -94,6 +94,172 @@ Nothing here is a redesign. Every item is a small, well-located change; file:lin
 **Frontend companion (already shipped, no backend dependency):** the frontend's own client-side timeouts were reconciled to match, plus a "harvest" mechanism so a request that outlives whatever timeout fires still gets its result picked up instead of leaving the UI stuck on a stale error.
 
 **Not done, flagged separately:** the backend still collapses every résumé-parse failure — a genuinely corrupt file, a rate limit, a transient 5xx — into one generic message with no way for the client to tell retryable from terminal. Left alone since it changes the response contract; worth a follow-up if it comes up again.
+
+---
+
+## §Y — Premium: real "unlimited" daily deck volume 🟠 Medium — Premium ships ON in v1 (updated 2026-10-05; new section 2026-09-23 — for Nico)
+
+**Update 2026-10-05: `PREMIUM_ENABLED` is now `true` on `feat/premium-on` and v1 launches with the BackChannel Pro subscription live.** That promotes item 1 below (server-side entitlement verification) from "future nice-to-have" to **wanted for launch, acceptable shortly after**: without it a modified client can claim Premium and bypass the daily like cap. Smallest version that closes the gap: a RevenueCat **webhook receiver** (`POST /api/webhooks/revenuecat/`, verify the `Authorization` header against a shared secret) that upserts `user_id → is_premium, expires_at` from `INITIAL_PURCHASE` / `RENEWAL` / `CANCELLATION` / `EXPIRATION` events (RevenueCat's `app_user_id` is our `USER_ID`, set via `Purchases.logIn`), plus `is_premium` echoed on `GET /api/profile/` so the app can reconcile. The like-cap check itself stays client-side for v1; this just gives us a server record to audit against and to gate §Y #2 on later. Yosef will send you the webhook URL/secret from the RevenueCat dashboard once the app is configured there.
+
+**Original context (2026-09-23):** A frontend-only subscription audit this week found the Premium paywall's copy promised "unlimited swiping," but the code never actually delivered it — the "unlock more cards" button just rewound the same already-loaded 10-card deck, not a bigger or fresh one. That's been fixed on our side: the paywall now promises (and actually enforces) a **higher daily LIKE cap only** — 2/day free, 5/day Premium (`constants/config.ts`'s `DAILY_LIKE_LIMITS`, plus a new `lib/dailyLikeLimit.ts` persistent counter so it can't be reset by tapping "review again"). Nothing in this fix needs anything from you — flagging this section only for the *next* step, which does.
+
+**What's still missing, purely a future nice-to-have, not required for launch:**
+
+1. **Real dependency first — entitlement has to be backend-verifiable before this is safe to build.** Don't build a bigger deck on top of a client-supplied "is this user premium" flag — trusting the app's own claim here would let anyone fake premium deck volume the same way §V already flagged for server-mediated actions generally. This needs RevenueCat's REST API or a webhook receiver landing first — not a new ask, this is the same "server-side receipt validation" gap §V and §W already have on file.
+2. **Once that exists, the simplest version:** have `GET /api/profiles/pack/` (sponsor deck) and the applicant job-pack endpoint return a larger batch — e.g. 30 instead of 10 — for a caller the backend has independently confirmed is Premium, rather than the app needing a whole new endpoint. A paginated "give me more" follow-up call is a reasonable v2 if a flat larger pack turns out not to be enough; not necessary to start with.
+3. Whatever the real ceiling ends up being, it's still bounded by the actual pool of unseen candidates for that user — "unlimited" should mean "no artificial cap, real candidates only," never literally infinite.
+
+**Fix order:** nothing to do right now. Whenever Premium goes live for real and there's appetite to grow the deck-size promise beyond the like-cap increase (which is already live and self-contained frontend-side), come back to item 1 first.
+
+---
+
+## §Z — Premium: real interest counts on browse rows, for honest social proof 🟢 Not urgent — same trigger as §Y (new section, 2026-09-24 — for Nico)
+
+**Status/context:** The marketplace premium gate (`MarketplaceGateModal`) was rebuilt this week to sell the outcome rather than the rule — it now names the role and company, plays a request → review → introduction reel, and pulls live prices from RevenueCat. One conversion lever was deliberately left out because the data doesn't exist yet: **social proof on the gate** ("4 applicants requested a sponsor here this week"). We won't fabricate that number — it goes in only when it's real.
+
+**What's needed, one field:** `GET /api/jobs/browse/` rows (applicant callers) gain an integer `REQUEST_COUNT_7D` — distinct applicants who have hit `POST /api/jobs/<job_id>/request-sponsor/` for that job in the trailing 7 days (for sponsored rows, the equivalent from `POST /api/jobs/like/` is fine, same field name). Zero is a valid value and the app hides the line below a small threshold, so no need to null it out.
+
+**Fix order:** nothing until PREMIUM_ENABLED is on. The app already has the surface waiting — it's a one-line copy addition on our side once the field lands.
+
+---
+
+## §AA — Dev (staging) database has no ATS jobs and thin seed data — the jobs board is empty on `development` builds 🟠 Medium priority (new section, 2026-09-25 — for Nico)
+
+**Status/context:** Since the CI/CD split, the app's `development` env (`.env.development`) points at `backchannel-dev` → the `BACKCHANNEL_DEV` Postgres, while `preview`/`production` point at `oyster-app` → prod. On a dev build the applicant Jobs tab now shows "No roles available", and both decks look sparse compared to a few weeks ago (when every build hit prod).
+
+**Verified 2026-09-25** against `https://backchannel-dev-hl72i.ondigitalocean.app` with a throwaway `inttest_*@test.backchannel.local` applicant (deleted afterwards via `/api/account/delete/`, per the DEV_ENVIRONMENT.md convention):
+
+- `GET /api/jobs/browse/` → `total_count: 0`. The marketplace reads `ats.silver_jobs`, and that table is empty on dev.
+- `GET /api/jobs/pack/` → 10 rows, so the deck's *sponsored* `job_postings` side has something; the ATS side has nothing.
+- `/api/health/ready/` is fine on both environments — this is a data gap, not an outage.
+
+**Root cause (from the backend repo):** `scripts/ats_etl.py` (RapidAPI → `ats.silver_jobs`, every 12h) and `scripts/ats_staleness_purge.py` run as DigitalOcean **scheduled jobs on the prod app only**. Nothing ever populates `BACKCHANNEL_DEV`'s ATS table. Likewise the two seed commands (`seed_demo_data`, `seed_personas` — 12 applicants / 12 sponsors / 20 jobs) don't appear to have been run against dev, so the profile and sponsored-job pools are just whatever integration tests and manual signups left behind.
+
+**Asks, cheapest first:**
+
+1. **One-shot backfill now:** run `python scripts/ats_etl.py --max-pages 2` with the dev `POSTGRES_URL` so the board has real listings today. (Two pages keeps the RapidAPI quota hit small.)
+2. **Seed the decks:** `python manage.py seed_personas --execute` (and/or `seed_demo_data`) against dev so applicants see sponsors, sponsors see applicants, and the sponsored-job flows have real rows.
+3. **Keep it from drifting again:** add the `ats_etl` scheduled job to the `backchannel-dev` DO app too, on a lighter cadence (e.g. daily, `--max-pages 2`), plus the staleness purge. If RapidAPI quota is the concern, a nightly copy of `ats.silver_jobs` from prod → dev is an acceptable alternative — that table holds no user PII.
+
+**Why it matters now:** the marketplace premium gate (§Z and the frontend's `fix/subscription-paywall-audit` branch) can only be exercised on a board with listings. Until dev has data, testing it means running a `preview` build against **prod** — every like/sponsor request/waitlist join from that testing lands in the real database.
+
+**Frontend side:** nothing to change. The env split itself is correct; it just exposed that dev was never given its own data.
+
+---
+
+## §AB — Launch-readiness: remote config endpoint + https email links 🟠 Medium priority (new section, 2026-09-26 — for Nico)
+
+Two small backend asks that unlock things the frontend has already built (branch `feat/launch-readiness`). Neither blocks App Review; both are the difference between "we can react to a bad launch" and "we can't."
+
+### 1. `GET /api/app-config/` — the break-glass endpoint
+
+**Why:** OTA updates ship JS fixes, but they can't tell an old native build "you're too old for this backend," and they can't switch a broken feature off in the minutes after you notice it. The app now checks this endpoint at boot and each time it returns to the foreground (throttled to once per 5 min) and honors the answer. **It is fail-open by design** — a 404 (today), a timeout, or garbage means "no restrictions," and the last good response is cached on-device — so shipping the app before this endpoint exists is safe, and a bug in this endpoint can never lock users out.
+
+**Contract** (unauthenticated — it must work on the sign-in screen and for logged-out users):
+```
+GET /api/app-config/
+200 { "min_version": "1.0.0", "maintenance_message": null, "flags": { } }
+```
+- `min_version` (string, dotted numeric): builds **below** this show a blocking "Update required" screen linking to the App Store. Compared numerically (`1.2.10` > `1.2.9`). `null`/`""` = no minimum. Compared against `app.json`'s `version`, **not** the build number.
+- `maintenance_message` (string|null): non-empty → the app shows this message instead of itself (incident/maintenance). `null`/`""` = normal.
+- `flags` (object of booleans): server-controlled kill switches / gradual rollouts. The frontend reads them via `useRemoteFlag(name, default)`; an absent key uses the caller's default, so adding a flag here never changes behavior until the app asks for it. Nothing reads any flag yet.
+
+**Implementation notes:** a tiny read-only view backed by settings/env (e.g. `APP_MIN_VERSION`, `APP_MAINTENANCE_MESSAGE`) is enough for v1 — being able to change it from the DO dashboard without a deploy is the point. Serve with `Cache-Control: public, max-age=60` (it's hit by every client on every foreground). Keep it dependency-free — no DB, no auth — so it stays up when the rest of the API doesn't; that's exactly when it's needed.
+**Acceptance:** `curl https://<api>/api/app-config/` → 200 JSON of the shape above. Setting `min_version` above the shipped app version makes the app show the update screen on next foreground.
+
+### 2. Transactional-email links: use `https://` (supersedes §X #1's `backchannelv2://` default)
+
+The frontend now supports **universal links** (site PR: `BackChannel-Netlify` #2 serves `apple-app-site-association` + a fallback page; app: `associatedDomains` in `app.json`). That changes the best fix for §X #1:
+
+- **Use `https://backchannelapp.netlify.app/verify-email?token=…` and `/reset-password?token=…`** — i.e. keep the original `{FRONTEND_URL}/<path>?token=…` pattern, just make sure `FRONTEND_URL` points at that site. With the app installed, iOS opens the link *directly in the app* (route `app/verify-email.tsx`); without it (or on a laptop) the visitor lands on a real page with an App Store button instead of a dead end. The original bug was the marketing site having no page at those paths — that page now exists.
+- Why this beats the custom scheme `backchannelv2://` from §X #1: a custom scheme does **nothing** when the app isn't installed and Gmail/Outlook/many webviews refuse to open non-http links at all (a link that silently does nothing). `https` links work everywhere and degrade gracefully.
+- **Ordering:** don't switch emails until (a) the Netlify PR is merged and (b) an app build containing `associatedDomains` is on users' phones — before that, an `https` link would open the fallback page rather than the app. Until then §X #1's custom-scheme change is still a strict improvement over today.
+- **Which domain?** We're launching on the Netlify host (works today, `FRONTEND_URL` should point there for now). `backchannel.it.com` — the site Nico runs — is the intended long-term home for these links, but it needs three things added first. **See §AE below: that's the checklist for Nico specifically, so it doesn't get missed inside this email-routing note.** The app already trusts both hosts (no rebuild needed to switch once §AE is done).
+- If the site later moves again (e.g. to `backchannel.app`), change `FRONTEND_URL` and tell us: the app's `associatedDomains` and the new site's AASA file both need the new host, and — unlike swapping between the two hosts already trusted — that one needs a rebuild.
+
+---
+
+## §AC — Invite loop: accept a `referred_by` on signup 🟢 Low priority, nice-to-have (new section, 2026-09-26 — for Nico)
+
+**Context:** the app now has an invite loop (Settings > "Invite Someone" / "Invite a Colleague", plus a quiet link on the end-of-deck card). It shares `https://backchannelapp.netlify.app/invite/<inviter user_id>`; opening that link stores the inviter id on the recipient's device (first touch wins), and the app's **Mixpanel** `Sign Up Succeeded` event carries it as `referred_by`. So attribution and funnel analysis already work **with no backend change**.
+
+**What the backend could add later (only if you want referral *features*, not just analytics):** accept an optional `referred_by` (string user_id) on the register endpoints (`register-applicant`, `register-sponsor`, and the SSO `complete-onboarding`) and persist it on the user row. That would enable server-side rewards/credit ("you invited 3 people"), fraud/self-referral checks, and reporting without depending on Mixpanel. Validate it exists and isn't the new user's own id; silently ignore it otherwise (never fail a signup over it). The frontend will send it once the field exists.
+
+**Fix order:** nothing to do for launch.
+
+---
+
+## §AD — Moderation & account-safety gaps found while writing the ops runbooks 🔴 High priority for launch (new section, 2026-09-26 — for Nico)
+
+Found by reading the code while writing `docs/ops/MODERATION_RUNBOOK.md` / `INCIDENT_PLAN.md` (frontend repo). Nothing was run against a live system, so treat each as "verify, then fix." They matter because App Review (1.2) and the published Privacy Policy make promises these gaps quietly break.
+
+1. **The moderation alert pipe is probably dead today.** `MODERATION_ALERT_EMAIL` defaults to `""` (report is stored, nobody alerted) and `backchannel.app` has no MX record (mail to `support@` bounces). Also: the alert email carries only ids + reason (no names, detail text, or conversation id), and its `queue_url` is built from `FRONTEND_URL` (the Netlify marketing site), so the link is wrong. **Ask:** set the env var, include reporter/reported names + detail + conversation id, and build `queue_url` from the API/admin host. (Extends §W #4.)
+2. **Moderation tooling is JSON-only.** `GET /admin/api/reports/` + a resolve endpoint (which can deactivate the user) exist, but there's no HTML reports page (resolving needs a devtools `fetch` with a CSRF header) and `django.contrib.admin` isn't installed. There is deactivate/reactivate, but no *ban*: a deactivated user can re-register with a new email (trivial with Apple Hide My Email). **Ask (minimal):** a simple HTML reports queue with a "resolve + deactivate" button; consider blocking re-registration by SSO subject / device.
+3. **Deleting an account destroys moderation evidence.** `queries/purge.py` deletes `moderation.reports` rows where the user is reporter, reported, or resolver, plus all messages/conversations for both sides. A reported user can delete their account and erase the report and the thread. The Privacy Policy (§7) says report records are kept after deletion where necessary; the code doesn't do that. **Ask:** retain (or anonymize-but-keep) reports and the reported conversation on purge. This also makes the policy sentence true.
+4. **Policy says reporting withdraws pending referrals; code doesn't.** `report_user` withdraws likes, matches, and conversations only. **Ask:** also withdraw pending referrals between the two users, or soften the policy sentence.
+5. **Deactivation gaps to verify with a throwaway account:** (a) refresh uses the stock `TokenRefreshView`, so a deactivated user's refresh token still works; (b) `ws_auth.py` has no `is_active` check that we could find, so a deactivated user may keep sending over an open chat socket; (c) the SSO login path wasn't traced. **Ask:** check `is_active` on refresh + socket connect + SSO login.
+6. **CSAM / NCMEC.** No automated image scanning, photos are public-read on the CDN (§V #2), and no login IPs are stored (little to include in a report). Counsel should confirm the reporting duty, process, and evidence-preservation period **before launch**.
+7. **Health endpoints.** `/api/health/` is static (doesn't touch the DB); `/api/health/ready/` checks Postgres + Redis but is public and returns raw exception text on failure. **Ask:** don't leak exception text publicly; point uptime monitors at `/ready/`.
+8. **No global push kill switch** and no documented Sentry alert rules / uptime monitors (see `docs/ops/INCIDENT_PLAN.md` for suggested ones).
+9. **Data export vs. Privacy Policy (`docs/ops/DATA_RIGHTS_SPEC.md`):** Policy §3 says we don't collect phone/DOB/street/postal code, but those columns still exist (§L). An honest "download my data" export would contradict the policy, so land the §L cleanup first.
+10. **Lifecycle messaging (`docs/ops/LIFECYCLE_MESSAGING.md`) needs backend that doesn't exist:** a scheduler, `last_active_at`, and a user timezone (`last_login` is not "last active"), plus a new `reminders` notification type with its own toggle and an unsubscribe endpoint. The Privacy Policy discloses only transactional email; lifecycle email needs a policy update first. Not launch-blocking.
+
+**Fix order:** 1 → 3 → 5 → 2 → 4 → 7 → 6 (counsel, in parallel) → rest.
+
+---
+
+## §AE — For Nico: what `backchannel.it.com` needs before we can point the app at it, + the support email 🟠 Medium priority (new section, 2026-09-27 — for Nico specifically)
+
+Pulling this out on its own so it doesn't get lost inside §AB's email-routing note. This is about **your site** (`backchannel.it.com`, DigitalOcean + Cloudflare) and **the support inbox** — two things only you can act on.
+
+### 1. `backchannel.it.com` needs to serve universal-link files before we switch to it
+
+**Context:** email links (verify email, reset password) are moving from a dead-end website link to "universal links" — regular `https://` links that open directly in the app when it's installed, and fall back to a normal web page when it isn't. This fixes a real bug: those links currently go nowhere useful. We're launching on a temporary Netlify host (already built and live) precisely so this isn't blocking launch — but `backchannel.it.com` is the real, permanent home for them, since it's the actual BackChannel domain. **The app already trusts both hosts today, so switching later needs zero app rebuild — just these three things on your side:**
+
+1. **Serve `/.well-known/apple-app-site-association`** — a small JSON file (contents below) at exactly that path. Must return **HTTP 200**, `Content-Type: application/json`, **no redirects** (Apple's fetcher won't follow one). It has no file extension on purpose; that's normal.
+   This is copied verbatim from what's already live and working at `backchannelapp.netlify.app` (verified via `curl` just now), so it's proven correct, not just written from spec:
+   ```json
+   {
+     "applinks": {
+       "details": [
+         {
+           "appIDs": ["ZWFR8LC25W.com.yosefwolday.backchannelv2"],
+           "components": [
+             { "/": "/verify-email", "comment": "Email verification + work-email verification + email change" },
+             { "/": "/reset-password", "comment": "Password reset" },
+             { "/": "/job/*", "comment": "Shared job links (invite loop)" },
+             { "/": "/invite/*", "comment": "Invite links (invite loop)" }
+           ]
+         }
+       ]
+     },
+     "webcredentials": { "apps": ["ZWFR8LC25W.com.yosefwolday.backchannelv2"] }
+   }
+   ```
+   The `comment` keys are just documentation for anyone reading the file later; Apple ignores them.
+2. **Make sure Cloudflare doesn't intercept that path.** Bot Fight Mode, "Under Attack" mode, or a WAF rule can serve Apple's verification fetcher a challenge page or a 403 instead of the JSON above — which silently breaks the whole feature with no visible error on our side. Add an explicit WAF/firewall skip rule for `/.well-known/*`.
+3. **Add a real page at those four paths** (`/verify-email`, `/reset-password`, `/job/*`, `/invite/*`) for people who don't have the app installed yet — right now there's nothing there. It just needs: an "Open in the App Store" link, and ideally a hand-off to `backchannelv2://` + the same path/query for anyone who *does* have the app but arrived some other way (e.g. pasted the link on desktop, then opens it on their phone). We already built exactly this page for the Netlify host (`BackChannel-Netlify` repo, `open.html`) if you want to reuse/adapt it rather than build from scratch.
+
+**How to verify it's working, once done:**
+```
+curl -sI https://backchannel.it.com/.well-known/apple-app-site-association
+# expect: HTTP/2 200, content-type: application/json, no "location:" header
+```
+Then tell us — we'll flip `FRONTEND_URL` (and confirm on our side with a real device) rather than you needing to touch the app at all.
+
+**Not urgent for launch** — the Netlify host covers this until you're ready.
+
+### 2. Support email — `support@backchannel.app` currently bounces
+
+Every "contact us" surface in the app and on both websites (the in-app Help & Feedback button, the App Store review notes, the Privacy Policy, the moderation-report acknowledgment) points at `support@backchannel.app`. **That domain has no MX record**, so mail sent to it is undeliverable today — silently, from the sender's point of view (no bounce notice most of the time, it just vanishes).
+
+**This is separate from, and in addition to, the `MODERATION_ALERT_EMAIL` gap in §AD #1** (that one is about *us* getting notified when a report comes in; this one is about *users* being able to reach us at all, e.g. "I paid and lost Premium access," account issues, or general questions).
+
+**Ask:** pick which domain support mail should actually live on — `backchannel.app`, `backchannel.it.com`, or something else — and get an MX record pointed at a real inbox (Google Workspace, a forwarding rule, whatever's simplest). Once that's decided, tell us if the address itself needs to change from `support@backchannel.app` — it's a single constant (`constants/config.ts`'s `SUPPORT_EMAIL`) on our side, a one-line change.
+
+**Heads-up (2026-10-05):** a Google Workspace account for `backchannel.app` already exists, half set up, under Yosef's login (domain not yet verified, no MX added). If you go with `backchannel.app`, finish *that* account rather than starting a new signup — Google otherwise blocks with "this domain is already in use." Yosef can add you as an admin. Also, while you're in DNS: `backchannel.app` has **no SPF or DKIM either**, so whatever domain `DEFAULT_FROM_EMAIL` uses in prod needs the SMTP provider's (Resend's) SPF/DKIM records and a `_dmarc` TXT, or verification/reset mail will keep drifting into spam.
+
+**This blocks launch** in the sense that App Review may test the support contact, and it's a bad first impression for a real user's first support request to vanish into the void.
 
 ---
 
@@ -163,7 +329,7 @@ Nothing here is a redesign. Every item is a small, well-located change; file:lin
 1. **Backend/ops:** merge `develop` → `main` and deploy — SSO is live on dev (`https://backchannel-dev-hl72i.ondigitalocean.app`, returns 503-per-provider until creds are set) but **not on production**.
 2. **Admin (Apple): ✅ done (2026-08-08)** — the Sign in with Apple `.p8` key exists (key ID `96LV7XHDB4`, in the admin's local Downloads, deliver to backend via a private channel — never commit it), and `app.json` has `usesAppleSignIn: true` so EAS manages the App ID capability + entitlement at build time. Remaining is only the handoff: backend env vars `APPLE_BUNDLE_ID` + `APPLE_TEAM_ID` (`ZWFR8LC25W`) / `APPLE_KEY_ID` / `APPLE_PRIVATE_KEY` — and the key trio is only for revoke-on-delete, so Apple sign-in itself can go live with just the bundle ID set.
 3. **Admin (Google):** create iOS/Android/Web OAuth client IDs in Google Cloud Console. Feeds backend `GOOGLE_OAUTH_CLIENT_IDS` (comma-separated, web ID is the token `aud`) and the frontend `EXPO_PUBLIC_GOOGLE_*_CLIENT_ID` env vars; the iOS ID's reversed form also goes into app.json's google-signin plugin as `iosUrlScheme`.
-4. **Frontend:** set the env vars from #3, then EAS build (native modules + entitlement must ship in a real build; the config plugin `plugins/withGoogleSigninModularHeaders.js` already handles the Podfile patch on every prebuild). ~~Flip `SSO_ENABLED = true`~~ — **done 2026-08-19**, committed on `main`; the next build ships with SSO buttons rendering, so sequence the backend deploy (#1) before or alongside that build.
+4. **Frontend:** set the env vars from #3, then EAS build (native modules + entitlement must ship in a real build; the config plugin `plugins/withGoogleSigninModularHeaders.js` already handles the Podfile patch on every prebuild). ~~Flip `SSO_ENABLED = true`~~ — **done 2026-08-19**, committed on `main`; the next build ships with SSO buttons rendering, so sequence the backend deploy (#1) before or alongside that build. **Unlike everything else in this doc, this one isn't "ships whenever backend catches up" — the Google client IDs are baked into the native binary at build time, so a build submitted before they exist will never gain working Google Sign-In on its own. If Apple approves a build before this step, a *new* build (and a fresh App Store submission/review) is required specifically to add Google Sign-In — Apple Sign-In (item 2) doesn't have this problem, since it only needs backend env vars.**
 5. **E2E test against dev first** — their handoff's §5 has the recipe; test users land in `BACKCHANNEL_DEV`, never prod.
 
 ---

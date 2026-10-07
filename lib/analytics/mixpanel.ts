@@ -14,6 +14,7 @@
  *    property to an event, update the helper's argument type.
  */
 
+import { getPendingReferrer } from "@/lib/referrer";
 import { Mixpanel } from "mixpanel-react-native";
 import { clearSentryUser, logBreadcrumb, setSentryUser } from "../sentry";
 
@@ -63,7 +64,6 @@ export async function initAnalytics(): Promise<void> {
       initialized = true;
     } catch (err) {
       // Init failures shouldn't break the app — analytics will simply no-op.
-      // eslint-disable-next-line no-console
       console.warn("[Analytics] init failed:", err);
     } finally {
       initPromise = null;
@@ -150,7 +150,6 @@ export async function identifyUser(args: IdentifyArgs): Promise<void> {
       user_id: args.userId,
     });
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.warn("[Analytics] identify failed:", err);
   }
 }
@@ -171,7 +170,6 @@ export async function resetUser(): Promise<void> {
   try {
     await mixpanel.reset();
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.warn("[Analytics] reset failed:", err);
   }
 }
@@ -193,7 +191,6 @@ function safeTrack(event: string, properties?: EventProps): void {
     }
     mixpanel.track(event, cleaned);
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.warn(`[Analytics] track("${event}") failed:`, err);
   }
 }
@@ -255,10 +252,23 @@ export function trackSignUpSucceeded(
   role: AnalyticsUserType,
   authMethod: AuthMethod = "email",
 ): void {
-  safeTrack("Sign Up Succeeded", {
-    selected_role: role,
-    auth_method: authMethod,
-  });
+  // `referred_by` closes the invite loop's attribution: set only when this
+  // install was opened from someone's /invite link (lib/referrer.ts).
+  // Read async, so the event fires a tick later — harmless for analytics.
+  getPendingReferrer()
+    .then((referrer) => {
+      safeTrack("Sign Up Succeeded", {
+        selected_role: role,
+        auth_method: authMethod,
+        ...(referrer ? { referred_by: referrer } : {}),
+      });
+    })
+    .catch(() => {
+      safeTrack("Sign Up Succeeded", {
+        selected_role: role,
+        auth_method: authMethod,
+      });
+    });
 }
 
 export function trackSignUpFailed(
@@ -711,8 +721,38 @@ export function trackPaywallShown(args: { trigger: string }): void {
   safeTrack("Paywall Shown", { trigger: args.trigger });
 }
 
-export function trackPurchaseSucceeded(args: { restored: boolean }): void {
-  safeTrack("Purchase Succeeded", { restored: args.restored });
+/** A plan row tapped in our checkout (not the initial default). */
+export function trackPlanSelected(args: {
+  trigger: string;
+  packageType: string;
+}): void {
+  safeTrack("Plan Selected", {
+    trigger: args.trigger,
+    package_type: args.packageType,
+  });
+}
+
+export function trackPurchaseSucceeded(args: {
+  restored: boolean;
+  trigger?: string;
+  packageType?: string;
+}): void {
+  safeTrack("Purchase Succeeded", {
+    restored: args.restored,
+    trigger: args.trigger ?? null,
+    package_type: args.packageType ?? null,
+  });
+}
+
+/** The store deferred the purchase (Ask to Buy, bank approval). */
+export function trackPurchasePending(args: {
+  trigger: string;
+  packageType: string;
+}): void {
+  safeTrack("Purchase Pending", {
+    trigger: args.trigger,
+    package_type: args.packageType,
+  });
 }
 
 export function trackPurchaseFailed(reason: string): void {
@@ -721,6 +761,74 @@ export function trackPurchaseFailed(reason: string): void {
 
 export function trackRestorePurchasesRequested(): void {
   safeTrack("Restore Purchases Requested");
+}
+
+// The marketplace gate sits one step BEFORE Paywall Shown — a user can see
+// it and tap "Keep browsing" without the RevenueCat paywall ever opening,
+// so these two make the gate→paywall drop-off measurable on its own.
+export function trackMarketplaceGateShown(args: {
+  intent: "request" | "like";
+  jobId: string | null;
+}): void {
+  safeTrack("Marketplace Gate Shown", {
+    intent: args.intent,
+    job_id: args.jobId,
+  });
+}
+
+export function trackMarketplaceGateDismissed(args: {
+  intent: "request" | "like";
+}): void {
+  safeTrack("Marketplace Gate Dismissed", { intent: args.intent });
+}
+
+/** A free applicant spent their one complimentary sponsor request. */
+export function trackFreeSponsorRequestUsed(args: { jobId: string }): void {
+  safeTrack("Free Sponsor Request Used", { job_id: args.jobId });
+}
+
+// The deck's like-cap gate, same shape as the marketplace pair above so
+// the two funnels compare like for like.
+export function trackLikeLimitGateShown(args: {
+  role: "applicant" | "sponsor";
+  heldCount: number;
+  heldFull: boolean;
+}): void {
+  safeTrack("Like Limit Gate Shown", {
+    role: args.role,
+    held_count: args.heldCount,
+    held_full: args.heldFull,
+  });
+}
+
+export function trackLikeLimitGateDismissed(args: {
+  role: "applicant" | "sponsor";
+  held: boolean;
+}): void {
+  safeTrack("Like Limit Gate Dismissed", { role: args.role, held: args.held });
+}
+
+/** A capped like was held instead of dropped. */
+export function trackLikeHeld(args: {
+  role: "applicant" | "sponsor";
+  heldCount: number;
+}): void {
+  safeTrack("Like Held", { role: args.role, held_count: args.heldCount });
+}
+
+/** Held likes were sent after a purchase. */
+export function trackHeldLikesSent(args: {
+  role: "applicant" | "sponsor";
+  count: number;
+  matches: number;
+  trigger: "like_limit_gate" | "deck_done";
+}): void {
+  safeTrack("Held Likes Sent", {
+    role: args.role,
+    count: args.count,
+    matches: args.matches,
+    trigger: args.trigger,
+  });
 }
 
 // ─── Check-ins (PR #37) ───────────────────────────────────────────────────────
@@ -766,6 +874,26 @@ export function trackCheckInFailed(args: {
 
 export function trackProfileEditOpened(args: { section: string }): void {
   safeTrack("Profile Edit Opened", { profile_section: args.section });
+}
+
+// ─── Growth: invites ─────────────────────────────────────────────────────────
+
+/** User completed the system share sheet for an invite link. */
+export function trackInviteShared(args: {
+  role: AnalyticsUserType;
+  source: string;
+}): void {
+  safeTrack("Invite Shared", { role: args.role, invite_source: args.source });
+}
+
+/** App was opened from someone's invite link (attribution starts here). */
+export function trackInviteOpened(args: { referrerId: string }): void {
+  safeTrack("Invite Opened", { referrer_id: args.referrerId });
+}
+
+/** User opened Help & Feedback (contact support) from Settings. */
+export function trackSupportOpened(): void {
+  safeTrack("Support Opened");
 }
 
 export function trackProfileFieldUpdated(args: { field: string }): void {
@@ -821,7 +949,6 @@ export function trackTesterModeEnabled(args: {
     mixpanel.registerSuperProperties({ is_tester: true });
     mixpanel.getPeople().set({ is_tester: true });
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.warn("[Analytics] Failed to stamp is_tester:", err);
   }
 }

@@ -69,6 +69,7 @@ jobs:
         run: |
           eas update \
             --branch preview \
+            --environment preview \
             --message "$(git log -1 --pretty=%s)" \
             --non-interactive
 

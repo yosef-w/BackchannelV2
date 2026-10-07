@@ -222,7 +222,7 @@ export function EditProfileScreen({
         <LockedField
           label="WORK EMAIL"
           value={workEmail || "Not set"}
-          note="Your corporate email — helps verify your employer. Cannot be changed here. Contact support to update it."
+          note="Your corporate email. It helps verify your employer and can't be changed here. Contact support to update it."
         />
       )}
 
@@ -281,7 +281,7 @@ export function EditProfileScreen({
             <TextInput
               style={styles.locationInput}
               placeholder="e.g., San Francisco, CA"
-              placeholderTextColor={Colors.faint}
+              placeholderTextColor={Colors.muted}
               value={local.location}
               onChangeText={set("location")}
               onBlur={() =>
@@ -313,6 +313,8 @@ export function EditProfileScreen({
               <TouchableOpacity
                 onPress={() => onRemoveTag("expertise", index)}
                 hitSlop={hitSlopTo44(14, 14)}
+                accessibilityRole="button"
+                accessibilityLabel={`Remove ${tag}`}
               >
                 <X color={Colors.ink} size={14} />
               </TouchableOpacity>
@@ -337,6 +339,9 @@ export function EditProfileScreen({
               onAddTag("expertise", newTag);
               setNewTag("");
             }}
+            hitSlop={hitSlopTo44(32, 32)}
+            accessibilityRole="button"
+            accessibilityLabel="Add tag"
           >
             <Plus color={Colors.paper} size={18} />
           </TouchableOpacity>
@@ -380,6 +385,8 @@ export function EditProfileScreen({
                   <TouchableOpacity
                     onPress={() => onRemoveTag("desiredRoles", index)}
                     hitSlop={hitSlopTo44(14, 14)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Remove ${tag}`}
                   >
                     <X color={Colors.ink} size={14} />
                   </TouchableOpacity>
@@ -405,6 +412,9 @@ export function EditProfileScreen({
                     onAddTag("desiredRoles", newRoleTag);
                     setNewRoleTag("");
                   }}
+                  hitSlop={hitSlopTo44(32, 32)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Add tag"
                 >
                   <Plus color={Colors.paper} size={18} />
                 </TouchableOpacity>

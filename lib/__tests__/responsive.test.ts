@@ -1,10 +1,12 @@
 import {
   Breakpoints,
+  FontScale,
   columnsForWidth,
   getResponsiveInfo,
   gridItemWidth,
   hitSlopTo44,
   sheetMaxHeight,
+  shouldStackForFontScale,
 } from "../responsive";
 
 describe("columnsForWidth", () => {
@@ -139,5 +141,17 @@ describe("hitSlopTo44", () => {
 
   it("never returns negative padding for a control already larger than 44pt", () => {
     expect(hitSlopTo44(60, 60)).toEqual({ top: 0, bottom: 0, left: 0, right: 0 });
+  });
+});
+
+describe("shouldStackForFontScale", () => {
+  it("stays side by side through the capped range", () => {
+    expect(shouldStackForFontScale(1)).toBe(false);
+    expect(shouldStackForFontScale(FontScale.label)).toBe(false);
+  });
+
+  it("stacks once the label cap can no longer fit a row", () => {
+    expect(shouldStackForFontScale(FontScale.label + 0.01)).toBe(true);
+    expect(shouldStackForFontScale(2.35)).toBe(true); // AX3
   });
 });

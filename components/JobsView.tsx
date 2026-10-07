@@ -375,7 +375,7 @@ export function JobsView() {
       console.warn("[JobsView] Failed to update logo:", err);
       showToast(
         msg.toLowerCase().includes("invalid")
-          ? "Backend rejected that URL — double-check it points to an image."
+          ? "That URL didn't work. Double-check it points to an image."
           : "Couldn't save the new logo. Please try again.",
         "error",
       );
@@ -737,7 +737,7 @@ export function JobsView() {
         if (response.source === "llm") {
           setTimeout(() => {
             showToast(
-              "Auto-extracted by AI — review the listing in My Jobs.",
+              "Auto-extracted by AI. Review the listing in My Jobs.",
               "info",
             );
           }, 2700);
@@ -1166,9 +1166,8 @@ export function JobsView() {
           }}
           badge={
             selectedApplicantForMessage.status === "MATCHED"
-              ? // Monochrome to match the "Matched" tag on the list row.
-                { label: "Matched", color: Colors.ink, bgColor: Colors.surface }
-              : { label: "Liked your role" }
+              ? { label: "Matched", tone: "active" }
+              : { label: "Interested in your role", tone: "active" }
           }
           roleContext={
             selectedApplicantForMessage.appliedRole

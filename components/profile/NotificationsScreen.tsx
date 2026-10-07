@@ -78,6 +78,10 @@ const Row = React.memo(function Row({
       <Switch
         value={value}
         onValueChange={(v) => onToggle(notifKey, v)}
+        // The label lives in a sibling Text; without this VoiceOver reads
+        // an unnamed "switch".
+        accessibilityLabel={label}
+        accessibilityHint={description}
         {...SWITCH_COLORS}
       />
     </View>
@@ -203,8 +207,8 @@ export function NotificationsScreen({ visible, onClose, userType }: Props) {
         >
           <Text style={styles.permissionBannerText}>
             Notifications are turned off for this app in your phone&apos;s
-            Settings — none of these will actually arrive until you turn
-            them back on.
+            Settings. None of these will arrive until you turn them back
+            on.
           </Text>
           <Text style={styles.permissionBannerLink}>Open Settings →</Text>
         </TouchableOpacity>
@@ -214,8 +218,8 @@ export function NotificationsScreen({ visible, onClose, userType }: Props) {
       <View style={styles.group}>
         <Row
           notifKey="deck_reminders"
-          label="Daily Deck Reminders"
-          description="A morning nudge when your fresh deck is ready, and an afternoon one if you haven't gone through it yet"
+          label="Daily Reminders"
+          description={`A morning nudge when today's ${userType === "sponsor" ? "candidates" : "roles"} are ready, and an afternoon one if you haven't gone through them yet`}
           value={isEnabled("deck_reminders")}
           onToggle={handleToggle}
         />
@@ -321,13 +325,12 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     marginTop: 4,
   },
+  // Flat hairline group — the Docket rebrand retired the recessed box;
+  // rows sit on the paper between rules, same as HubSection.
   group: {
-    backgroundColor: Colors.offWhite,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
     marginBottom: 28,
-    overflow: "hidden",
   },
   row: {
     flexDirection: "row",

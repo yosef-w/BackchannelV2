@@ -67,16 +67,16 @@ const applicantSlides: Slide[] = [
   {
     kind: "deck",
     titlePlain: "Every morning, ",
-    titleAccent: "ten cards.",
+    titleAccent: "ten roles.",
     description:
-      "A fresh deck of ten hand-picked jobs a day — each with real people inside who can refer you. Ten, not ten thousand.",
+      "Ten hand-picked jobs a day, each with real people inside who can refer you. Ten, not ten thousand.",
   },
   {
     kind: "match",
     titlePlain: "Interest goes ",
     titleAccent: "both ways.",
     description:
-      "Tap Connect on a job you want. When a sponsor inside picks you back, it's a match — and a chat opens right here.",
+      "Tap Interested on a job you want. When a sponsor inside is interested too, it's a match, and a chat opens right here.",
   },
   {
     kind: "track",
@@ -90,10 +90,10 @@ const applicantSlides: Slide[] = [
 const sponsorSlides: Slide[] = [
   {
     kind: "deck",
-    titlePlain: "Your daily deck of ",
-    titleAccent: "talent.",
+    titlePlain: "Every morning, ",
+    titleAccent: "ten candidates.",
     description:
-      "Ten candidates a day who want in where you already are — real profiles you can actually judge, not a résumé pile.",
+      "Ten candidates a day who want in where you already are. Real profiles you can actually judge, not a résumé pile.",
   },
   {
     kind: "match",
@@ -107,7 +107,7 @@ const sponsorSlides: Slide[] = [
     titlePlain: "Refer. Then watch it ",
     titleAccent: "count.",
     description:
-      "Submit the referral in a tap, and track every career you've helped move — right from your dashboard.",
+      "Submit the referral in a tap, then track every career you've helped move from your dashboard.",
   },
 ];
 
@@ -476,7 +476,7 @@ function MatchVignette({
         </Text>
         <Text style={styles.messageBody}>
           {applicant
-            ? "Happy to refer you — tell me about yourself."
+            ? "Happy to refer you. Tell me about yourself."
             : "Thanks for connecting! Here’s my portfolio."}
         </Text>
       </View>

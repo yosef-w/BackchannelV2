@@ -160,7 +160,7 @@ export default function VerifyEmailRoute() {
               subtitle={
                 status === "success"
                   ? "Thanks for confirming. You're all set."
-                  : "Your email was already verified — nothing else to do."
+                  : "Your email was already verified. Nothing else to do."
               }
             />
             <TouchableOpacity
@@ -197,7 +197,7 @@ export default function VerifyEmailRoute() {
                 <TextInput
                   style={styles.input}
                   placeholder="you@example.com"
-                  placeholderTextColor={Colors.faint}
+                  placeholderTextColor={Colors.muted}
                   value={resendEmail}
                   onChangeText={setResendEmail}
                   keyboardType="email-address"

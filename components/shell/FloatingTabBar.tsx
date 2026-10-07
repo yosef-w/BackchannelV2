@@ -10,7 +10,7 @@
 // navTranslateY shared value (HomeView is the only writer). Count pills
 // per route arrive via `badges`.
 
-import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
+import type { BottomTabBarProps } from "expo-router/js-tabs";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import {
@@ -271,13 +271,17 @@ export function FloatingTabBar({
                 badge={badges?.[item.name]}
                 onMeasured={handleTabMeasured}
                 onPress={() => {
+                  // Re-tapping the active tab is a no-op: nothing in the app
+                  // listens for tabPress, and expo-router's stack would answer
+                  // the event with a popToTop that no navigator handles.
+                  if (isActive) return;
                   const route = state.routes[routeIndex];
                   const event = navigation.emit({
                     type: "tabPress",
                     target: route?.key,
                     canPreventDefault: true,
                   });
-                  if (!isActive && !event.defaultPrevented) {
+                  if (!event.defaultPrevented) {
                     navigation.navigate(item.name);
                   }
                 }}
@@ -316,7 +320,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   wash: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor:
       Platform.OS === "android"
         ? "rgba(255,255,255,0.9)"

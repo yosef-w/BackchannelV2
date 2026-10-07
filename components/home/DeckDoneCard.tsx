@@ -1,10 +1,15 @@
-import { ChevronRight, Lock, RefreshCcw } from "@/components/ui/icons";
-import React from "react";
+import { ChevronRight, Lock } from "@/components/ui/icons";
+import React, { useMemo } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { ConfirmPop } from "@/components/cinema/ConfirmPop";
-import { PREMIUM_ENABLED } from "@/constants/config";
-import { Colors, Fonts, Type } from "@/constants/theme";
+import { QuietAction } from "@/components/matches/JobSheetKit";
+import { HeldLikeTile } from "./HeldLikeTile";
+import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
+import type { HeldLike } from "@/lib/heldLikes";
+import { priceAnchor } from "@/lib/premiumPricing";
+import { DAILY_LIKE_LIMITS, PREMIUM_ENABLED } from "@/constants/config";
+import { Colors, Fonts, Radii, Type } from "@/constants/theme";
 import { hitSlopTo44 } from "@/lib/responsive";
 
 interface DeckDoneCardProps {
@@ -13,17 +18,19 @@ interface DeckDoneCardProps {
   sessionLikes: number;
   sessionMatches: number;
   isPremium: boolean;
-  /** True while a presentPaywall() call from this card is in flight — the
-   * store itself now guards against a concurrent second call succeeding,
-   * but these buttons had no disabled/loading state of their own at all,
-   * so a fast double-tap could still dispatch two presentPaywall() calls
-   * (the second just a no-op) with zero visual feedback either way. */
-  unlocking?: boolean;
+  /** Cards the like cap held back today (lib/heldLikes.ts). The free
+   * face is built around them: real, specific, still-wanted. */
+  heldLikes: HeldLike[];
+  /** Opens the PremiumSheet; on purchase the caller sends every held like. */
   onUnlockMore: () => void;
   onReviewAgain: () => void;
+  /** Optional quiet "Invite someone" action (the invite loop). Omitted → not shown. */
+  onInvite?: () => void;
   /** Deep-link to the Matches tab — turns the recap numbers into doors. */
   onViewMatches: () => void;
 }
+
+const HELD_SHOWN = 3;
 
 /**
  * End-of-deck card: session recap + next actions.
@@ -31,11 +38,13 @@ interface DeckDoneCardProps {
  * Two faces:
  * - Premium: the accomplishment card — ConfirmPop badge, "You're all
  *   caught up", recap, review again. No upsell, ever.
- * - Free: the nightly velvet rope — the same MEMBERS ONLY gate panel
- *   language as the marketplace (lock seal, "Tomorrow's deck is for
- *   members."), with "Unlock with Premium" presenting the RevenueCat
- *   paywall via onUnlockMore. A completed purchase resets the deck AND
- *   fires the global Two Doors celebration automatically.
+ * - Free: the ledger. Leads with what the cap held back — "3 you wanted
+ *   are still waiting" over the actual cards — and a single "Send them"
+ *   CTA that opens the RevenueCat paywall; a purchase sends them all
+ *   (HomeView) while the Two Doors celebration plays on top. With
+ *   nothing held it falls back to a quiet, honest members panel: what
+ *   Premium actually delivers today is the higher daily like cap (see
+ *   docs/BACKEND_CHANGES_NEEDED.md §Y — never promise a bigger deck).
  *
  * Either way, a fresh match outranks everything: the recap's numbers are
  * springboards, not trophies, so a session that produced matches leads
@@ -48,23 +57,34 @@ export function DeckDoneCard({
   sessionLikes,
   sessionMatches,
   isPremium,
-  unlocking = false,
+  heldLikes,
   onUnlockMore,
   onReviewAgain,
+  onInvite,
   onViewMatches,
 }: DeckDoneCardProps) {
+  const packages = useSubscriptionStore((state) => state.packages);
+  const anchor = useMemo(() => priceAnchor(packages), [packages]);
+
   const deckWord = deckSize === 10 ? "ten" : String(deckSize);
   // Upsell only when premium is actually purchasable — with the flag off
   // (beta), isPremium is hardwired false and every upsell CTA would be a
-  // dead button, so everyone gets the caught-up card instead. Same
-  // PREMIUM_ENABLED && !isPremium guard as the marketplace gate.
-  const showUpsell = PREMIUM_ENABLED && !isPremium;
-  const showGatePanel = showUpsell && sessionMatches === 0;
+  // dead button, so everyone gets the caught-up card instead. Applicants
+  // only: sponsors are never capped and are never asked to subscribe.
+  const showUpsell =
+    PREMIUM_ENABLED && !isPremium && userType === "applicant";
+  const held = showUpsell ? heldLikes : [];
+  const heldCount = held.length;
+  const showGatePanel = showUpsell && sessionMatches === 0 && heldCount === 0;
+  const isSponsor = userType === "sponsor";
+  const sentLabel = isSponsor ? "Connected" : "Interest sent";
+  const noun = isSponsor ? "candidates" : "roles";
+  const wanted = sessionLikes + heldCount;
 
   return (
     <Animated.View entering={FadeInUp} style={styles.card}>
       {/* Accomplishment badge (premium only — the free layout gives its
-          center stage to the gate panel). Silent pop: this card also
+          center stage to the held cards). Silent pop: this card also
           shows passively when returning to a finished deck, so a haptic
           here would misfire. */}
       {!showUpsell && <ConfirmPop size={64} haptic={null} />}
@@ -72,41 +92,68 @@ export function DeckDoneCard({
       {/* Context pill — makes the daily-allotment limit explicit */}
       <View style={styles.pill}>
         <Text style={styles.pillText}>
-          DAILY DECK COMPLETE · {deckSize}/{deckSize}
+          TODAY&apos;S {noun.toUpperCase()} · {deckSize} OF {deckSize}
         </Text>
       </View>
 
       {!showUpsell ? (
         <>
           <Text style={styles.title}>
-            You&apos;re all <Text style={styles.titleAccent}>caught up</Text>
+            You&apos;re all <Text style={styles.titleAccent}>caught up.</Text>
           </Text>
           <Text style={styles.sub}>
-            You&apos;ve reviewed all {deckSize} cards in today&apos;s deck —
-            that&apos;s your daily allotment. A fresh set unlocks tomorrow.
+            You&apos;ve reviewed all {deckSize} of today&apos;s {noun}. A fresh
+            set arrives tomorrow.
+          </Text>
+        </>
+      ) : heldCount > 0 ? (
+        <>
+          <Text style={styles.title}>
+            {heldCount === 1
+              ? "One you wanted is still "
+              : `${heldCount} you wanted are still `}
+            <Text style={styles.titleAccent}>waiting.</Text>
+          </Text>
+          <Text style={styles.sub}>
+            You reviewed {deckSize}, wanted {wanted}, and could express
+            interest in {sessionLikes}. Members get {DAILY_LIKE_LIMITS.premium}{" "}
+            a day.
           </Text>
         </>
       ) : (
         <>
           <Text style={styles.title}>
-            That&apos;s {deckWord} for{" "}
-            <Text style={styles.titleAccent}>today.</Text>
+            That&apos;s today&apos;s{" "}
+            <Text style={styles.titleAccent}>{deckWord}.</Text>
           </Text>
-          <Text style={styles.sub}>
-            Great session. Here&apos;s how it went:
-          </Text>
+          <Text style={styles.sub}>Here&apos;s how it went.</Text>
         </>
       )}
 
       {/* Session recap — counts live in useJobsStore so they survive a tab
-          switch and back mid-deck. */}
+          switch and back mid-deck. The free face adds the held column so
+          the ledger reads sent / waiting / matched at a glance. */}
       <View style={styles.recap}>
         <View style={styles.recapCell}>
           <Text style={styles.recapValue}>{sessionLikes}</Text>
-          <Text style={styles.recapLabel}>
-            {userType === "applicant" ? "Interest sent" : "Connected"}
-          </Text>
+          <Text style={styles.recapLabel}>{sentLabel}</Text>
         </View>
+        {showUpsell && (
+          <>
+            <View style={styles.recapDivider} />
+            <View style={styles.recapCell}>
+              <Text
+                style={[
+                  styles.recapValue,
+                  heldCount === 0 && styles.recapValueQuiet,
+                ]}
+              >
+                {heldCount}
+              </Text>
+              <Text style={styles.recapLabel}>Waiting</Text>
+            </View>
+          </>
+        )}
         <View style={styles.recapDivider} />
         <TouchableOpacity
           style={styles.recapCell}
@@ -131,8 +178,34 @@ export function DeckDoneCard({
         </TouchableOpacity>
       </View>
 
-      {/* The nightly velvet rope — same panel language as the
-          marketplace gate, so the premium story reads as one system. */}
+      {/* The held cards — the specific things they wanted, by name. */}
+      {heldCount > 0 && (
+        <View style={styles.heldPanel}>
+          <View style={styles.heldHeader}>
+            <Text style={styles.heldEyebrow}>HELD FOR YOU</Text>
+            <View style={styles.heldBadge}>
+              <Lock color={Colors.paper} size={9} strokeWidth={2.6} />
+              <Text style={styles.heldBadgeText}>MEMBERS</Text>
+            </View>
+          </View>
+          {held.slice(0, HELD_SHOWN).map((item, i) => (
+            <View
+              key={item.id}
+              style={[styles.heldRow, i > 0 && styles.heldRowBorder]}
+            >
+              <HeldLikeTile item={item} size={40} compact />
+            </View>
+          ))}
+          {heldCount > HELD_SHOWN && (
+            <Text style={styles.heldMore}>
+              + {heldCount - HELD_SHOWN} more
+            </Text>
+          )}
+        </View>
+      )}
+
+      {/* The nightly members panel — only when there's nothing more
+          specific to say. Sells the cap Premium actually raises. */}
       {showGatePanel && (
         <View style={styles.gatePanel}>
           <ConfirmPop
@@ -142,11 +215,13 @@ export function DeckDoneCard({
           />
           <Text style={styles.gateEyebrow}>MEMBERS ONLY</Text>
           <Text style={styles.gateTitle}>
-            Tomorrow&apos;s deck is for{" "}
-            <Text style={styles.gateTitleAccent}>members.</Text>
+            {DAILY_LIKE_LIMITS.premium} a day, as a{" "}
+            <Text style={styles.gateTitleAccent}>member.</Text>
           </Text>
           <Text style={styles.gateSub}>
-            Unlimited swiping, plus the full job marketplace.
+            Free accounts can express interest in {DAILY_LIKE_LIMITS.free}{" "}
+            roles a day. Members get {DAILY_LIKE_LIMITS.premium}, plus the
+            full job marketplace.
           </Text>
         </View>
       )}
@@ -169,50 +244,45 @@ export function DeckDoneCard({
       ) : (
         showUpsell && (
           <TouchableOpacity
-            style={[styles.unlockCta, unlocking && styles.unlockCtaDisabled]}
+            style={styles.unlockCta}
             onPress={onUnlockMore}
-            disabled={unlocking}
             activeOpacity={0.85}
           >
-            <Text style={styles.unlockCtaText}>Unlock with Premium</Text>
+            <Text style={styles.unlockCtaText}>Unlock Premium</Text>
           </TouchableOpacity>
         )
       )}
 
-      {/* Secondary CTAs */}
+      {/* Secondary CTAs — quiet text, never a second filled/boxed button. */}
       {sessionMatches > 0 && showUpsell && (
-        <TouchableOpacity
-          style={styles.secondary}
-          onPress={onUnlockMore}
-          disabled={unlocking}
-          activeOpacity={0.7}
-        >
-          <Lock color={Colors.ink} size={15} strokeWidth={2.2} />
-          <Text style={styles.secondaryText}>Unlock with Premium</Text>
-        </TouchableOpacity>
+        <QuietAction label="Unlock Premium" onPress={onUnlockMore} />
       )}
-      {showGatePanel ? (
+
+      {showUpsell && anchor && (
+        <Text style={styles.anchor}>{anchor}</Text>
+      )}
+
+      {showUpsell ? (
         <TouchableOpacity
           onPress={onReviewAgain}
           activeOpacity={0.7}
           hitSlop={hitSlopTo44(200, 20)}
         >
           <Text style={styles.quietLink}>
-            Review today&apos;s deck again
+            Review today&apos;s {noun} again
           </Text>
         </TouchableOpacity>
       ) : (
-        <TouchableOpacity
-          style={[
-            styles.secondary,
-            !showUpsell && sessionMatches === 0 && styles.secondaryAlone,
-          ]}
-          onPress={onReviewAgain}
-          activeOpacity={0.7}
-        >
-          <RefreshCcw color={Colors.ink} size={16} strokeWidth={2.2} />
-          <Text style={styles.secondaryText}>Review again</Text>
-        </TouchableOpacity>
+        <QuietAction label="Review again" onPress={onReviewAgain} />
+      )}
+
+      {/* The end of a deck is a good moment to bring someone in: they just
+          got value and the next card isn't until tomorrow. */}
+      {onInvite && (
+        <QuietAction
+          label={userType === "sponsor" ? "Invite a colleague" : "Invite someone"}
+          onPress={onInvite}
+        />
       )}
     </Animated.View>
   );
@@ -259,18 +329,18 @@ const styles = StyleSheet.create({
     color: Colors.body,
     textAlign: "center",
     lineHeight: 22,
-    marginBottom: 28,
+    marginBottom: 24,
   },
+  // Flat between hairlines, not a tinted recessed box.
   recap: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: Colors.offWhite,
-    borderRadius: 16,
-    borderWidth: 1,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
     borderColor: Colors.border,
     paddingVertical: 18,
     width: "100%",
-    marginBottom: 24,
+    marginBottom: 16,
   },
   recapCell: {
     flex: 1,
@@ -282,6 +352,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: Colors.ink,
   },
+  recapValueQuiet: { color: Colors.faint },
   recapLabel: {
     fontSize: 12,
     fontWeight: "600",
@@ -304,7 +375,62 @@ const styles = StyleSheet.create({
     height: 32,
     backgroundColor: Colors.border,
   },
-  // ── The nightly gate (free users, no fresh match) ─────────────────────
+  // ── Held cards (free users, cap hit) ─────────────────────────────────
+  heldPanel: {
+    width: "100%",
+    backgroundColor: Colors.paper,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radii.xl,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 6,
+    marginBottom: 20,
+  },
+  heldHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 6,
+  },
+  heldEyebrow: {
+    fontSize: 9,
+    fontFamily: Fonts.sansBold,
+    letterSpacing: 2.2,
+    color: Colors.muted,
+  },
+  heldBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: Colors.ink,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  heldBadgeText: {
+    color: Colors.paper,
+    fontSize: 8,
+    fontWeight: "800",
+    letterSpacing: 1.5,
+  },
+  heldRow: {
+    paddingVertical: 10,
+  },
+  heldRowBorder: {
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  heldMore: {
+    fontSize: 12,
+    fontFamily: Fonts.sansSemiBold,
+    color: Colors.muted,
+    paddingVertical: 8,
+    textAlign: "center",
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  // ── The nightly gate (free users, nothing held, no fresh match) ───────
   gatePanel: {
     width: "100%",
     alignItems: "center",
@@ -351,7 +477,7 @@ const styles = StyleSheet.create({
     gap: 8,
     backgroundColor: Colors.ink,
     paddingVertical: 16,
-    borderRadius: 16,
+    borderRadius: 999,
     width: "100%",
   },
   primaryText: {
@@ -370,39 +496,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  unlockCtaDisabled: {
-    opacity: 0.6,
-  },
   unlockCtaText: {
     fontFamily: Fonts.sansSemiBold,
     color: Colors.paper,
     fontSize: 15.5,
     letterSpacing: -0.2,
   },
-  secondary: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 7,
-    paddingVertical: 15,
-    borderRadius: 16,
-    width: "100%",
-    marginTop: 10,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-  },
-  secondaryAlone: {
-    marginTop: 0,
-  },
-  secondaryText: {
-    color: Colors.ink,
-    fontSize: 15,
-    fontWeight: "700",
+  anchor: {
+    fontFamily: Fonts.sans,
+    fontSize: 12.5,
+    lineHeight: 18,
+    color: Colors.muted,
+    textAlign: "center",
+    marginTop: 12,
   },
   quietLink: {
-    marginTop: 14,
+    marginTop: 16,
     fontSize: 13.5,
     fontWeight: "600",
     color: Colors.muted,
+    textAlign: "center",
   },
 });

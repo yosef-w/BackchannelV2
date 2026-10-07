@@ -28,6 +28,7 @@ import Animated, { FadeIn,
     withTiming,
 } from "react-native-reanimated";
 import { CompanyLogo } from "../ui/CompanyLogo";
+import { StatusChip, type StatusTone } from "../ui/StatusChip";
 import { openExternalUrl } from "@/lib/openExternalUrl";
 import { hitSlopTo44, sheetColumn } from "@/lib/responsive";
 import { Colors, Fonts, Type } from "@/constants/theme";
@@ -401,11 +402,10 @@ export function PersonHero({
   location?: string;
   /** Quiet extra fact line under the meta — e.g. tenure or experience. */
   infoPill?: string;
-  pill?: { label: string; color?: string; bgColor?: string };
+  pill?: { label: string; tone?: StatusTone };
   /** Close affordance in the block's corner — scrolls with the content. */
   onClose?: () => void;
 }) {
-  const accent = pill?.color ?? Colors.ink;
   return (
     <View style={g.hero}>
       {onClose && <CardCloseButton onPress={onClose} />}
@@ -437,12 +437,7 @@ export function PersonHero({
       </View>
       {pill && (
         <View style={g.heroChipRow}>
-          <View style={[g.capsChip, { borderColor: accent }]}>
-            <CheckCircle size={11} color={accent} />
-            <Text style={[g.capsChipText, { color: accent }]}>
-              {pill.label.toUpperCase()}
-            </Text>
-          </View>
+          <StatusChip label={pill.label} tone={pill.tone ?? "active"} />
         </View>
       )}
     </View>
@@ -497,7 +492,6 @@ export function HostCard({
   children?: React.ReactNode;
 }) {
   const red = pill?.tone === "red";
-  const accent = red ? Colors.danger : Colors.ink;
   return (
     <View style={g.card}>
       <Text style={g.sectionTitle}>{label.toUpperCase()}</Text>
@@ -524,12 +518,7 @@ export function HostCard({
       </View>
       {pill && (
         <View style={g.heroChipRow}>
-          <View style={[g.capsChip, { borderColor: accent }]}>
-            <CheckCircle size={11} color={accent} />
-            <Text style={[g.capsChipText, { color: accent }]}>
-              {pill.label.toUpperCase()}
-            </Text>
-          </View>
+          <StatusChip label={pill.label} tone={red ? "muted" : "active"} />
         </View>
       )}
       {!!note && (
@@ -729,7 +718,15 @@ export function BarFooter({
   button,
   children,
 }: {
-  context?: { title: string; sub?: string; waiting?: boolean; done?: boolean };
+  context?: {
+    title: string;
+    sub?: string;
+    waiting?: boolean;
+    done?: boolean;
+    /** Small leading glyph (≈13px) for states that aren't waiting/done —
+     * e.g. a lock on a members-only action. */
+    icon?: React.ReactNode;
+  };
   button?: {
     label: string;
     icon?: React.ReactNode;
@@ -756,6 +753,7 @@ export function BarFooter({
               {context.done && (
                 <CheckCircle size={13} color={Colors.ink} strokeWidth={2.5} />
               )}
+              {context.icon}
               <Text style={g.footerTitle} numberOfLines={1}>
                 {context.title}
               </Text>
@@ -960,18 +958,22 @@ const g = StyleSheet.create({
     fontSize: 12,
     fontWeight: "800",
     color: FAINT,
-    letterSpacing: 1.2,
+    letterSpacing: 0.8,
     marginBottom: 10,
   },
+  // Same look as SheetCloseButton (paper, hairline) so the two close
+  // affordances read as one control.
   cardClose: {
     position: "absolute",
     top: 0,
     right: 0,
     zIndex: 2,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: TINT,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.paper,
+    borderWidth: 1,
+    borderColor: HAIRLINE,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1016,22 +1018,6 @@ const g = StyleSheet.create({
     flexWrap: "wrap",
     gap: 6,
     marginTop: 12,
-  },
-  capsChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    borderWidth: 1.2,
-    borderColor: Colors.ink,
-    borderRadius: 999,
-    paddingHorizontal: 11,
-    paddingVertical: 5,
-  },
-  capsChipText: {
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 0.8,
-    color: Colors.ink,
   },
   sourceRow: {
     flexDirection: "row",

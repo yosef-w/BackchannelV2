@@ -24,7 +24,17 @@ import * as Notifications from "expo-notifications";
  * worth syncing to the backend.
  */
 
+// LEGACY id: earlier builds scheduled ONE repeating DAILY trigger under this
+// id, which fired every morning forever, even for someone who'd stopped
+// opening the app months ago. It's now only ever cancelled (migrating
+// existing installs off it); see scheduleDailyDeckReminder.
 const DAILY_DECK_NOTIF_ID = "daily-deck-ready";
+const dailyDeckNotifId = (dayOffset: number) =>
+  `${DAILY_DECK_NOTIF_ID}-${dayOffset}`;
+/** How many mornings ahead the reminder is armed. Re-armed on every app
+ * open, so an active user never notices the window; a user who stops
+ * opening the app hears from us for one more week, then not at all. */
+export const DAILY_DECK_WINDOW_DAYS = 7;
 const UNFINISHED_DECK_NOTIF_ID = "unfinished-deck-reminder";
 const DECK_REMINDERS_PREF_KEY = "@bc/deckRemindersEnabled";
 
@@ -75,41 +85,70 @@ export async function setDeckRemindersEnabled(enabled: boolean): Promise<void> {
 }
 
 /**
- * Schedule (or reschedule, if the role-specific copy changed) the daily
- * "your deck is ready" local notification. Idempotent — safe to call every
- * time push permission is confirmed granted (e.g. on every app open).
+ * The next `days` reminder fire times: 9:00 local on consecutive mornings,
+ * starting today only if 9:00 hasn't passed yet. Pure, so the window rule is
+ * unit-testable without touching the notification API.
+ */
+export function nextDeckReminderDates(
+  now: Date,
+  days: number = DAILY_DECK_WINDOW_DAYS,
+): Date[] {
+  const dates: Date[] = [];
+  const cursor = new Date(now);
+  cursor.setHours(DAILY_DECK_HOUR, DAILY_DECK_MINUTE, 0, 0);
+  if (cursor.getTime() <= now.getTime()) cursor.setDate(cursor.getDate() + 1);
+  for (let i = 0; i < days; i++) {
+    dates.push(new Date(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return dates;
+}
+
+/**
+ * Arm the "your deck is ready" reminder for the next DAILY_DECK_WINDOW_DAYS
+ * mornings. Idempotent — call it every time push permission is confirmed
+ * granted (every app open): each call cancels and re-arms the whole window,
+ * which is what keeps the window rolling for an active user.
+ *
+ * Deliberately NOT a repeating DAILY trigger: that fires forever, including
+ * for lapsed users who then learn to swipe the notification away and turn
+ * every notification off (or delete the app). A bounded window trades that
+ * for silence after a week of inactivity.
  */
 export async function scheduleDailyDeckReminder(
   userType: "applicant" | "sponsor",
 ) {
   if (!(await getDeckRemindersEnabled())) return;
   try {
-    // Cancel any existing schedule first so re-calling this (e.g. after a
-    // role change) doesn't stack duplicate daily notifications under the
-    // same identifier — scheduleNotificationAsync does not dedupe by id.
-    await Notifications.cancelScheduledNotificationAsync(
-      DAILY_DECK_NOTIF_ID,
-    ).catch(() => {});
+    // Clear the legacy repeating trigger AND any previous window first —
+    // scheduleNotificationAsync does not dedupe by id, and a stale legacy
+    // trigger would keep firing alongside the new ones.
+    await cancelDailyDeckReminder();
 
-    await Notifications.scheduleNotificationAsync({
-      identifier: DAILY_DECK_NOTIF_ID,
-      content: {
-        title:
-          userType === "sponsor"
-            ? "Your applicant deck is ready"
-            : "Your fresh deck is ready",
-        body:
-          userType === "sponsor"
-            ? "New applicants matched to your roles are waiting."
-            : "New roles are waiting for you today.",
-        data: { type: "daily_deck_ready" },
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DAILY,
-        hour: DAILY_DECK_HOUR,
-        minute: DAILY_DECK_MINUTE,
-      },
-    });
+    const content = {
+      title:
+        userType === "sponsor"
+          ? "Your applicant deck is ready"
+          : "Your fresh deck is ready",
+      body:
+        userType === "sponsor"
+          ? "New applicants matched to your roles are waiting."
+          : "New roles are waiting for you today.",
+      data: { type: "daily_deck_ready" },
+    };
+    const dates = nextDeckReminderDates(new Date());
+    await Promise.all(
+      dates.map((date, i) =>
+        Notifications.scheduleNotificationAsync({
+          identifier: dailyDeckNotifId(i),
+          content,
+          trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.DATE,
+            date,
+          },
+        }),
+      ),
+    );
   } catch (err) {
     console.warn(
       "[localNotifications] Failed to schedule daily deck reminder:",
@@ -118,15 +157,22 @@ export async function scheduleDailyDeckReminder(
   }
 }
 
-/** Cancel the daily deck reminder (e.g. on logout). */
+/** Cancel the daily deck reminder: the whole window plus the legacy
+ * repeating trigger (e.g. on logout, or when the user turns it off). */
 export async function cancelDailyDeckReminder() {
-  try {
-    await Notifications.cancelScheduledNotificationAsync(
-      DAILY_DECK_NOTIF_ID,
-    );
-  } catch {
-    // No-op if it was never scheduled.
-  }
+  const ids = [
+    DAILY_DECK_NOTIF_ID,
+    ...Array.from({ length: DAILY_DECK_WINDOW_DAYS }, (_, i) =>
+      dailyDeckNotifId(i),
+    ),
+  ];
+  await Promise.all(
+    ids.map((id) =>
+      Notifications.cancelScheduledNotificationAsync(id).catch(() => {
+        // No-op if it was never scheduled.
+      }),
+    ),
+  );
 }
 
 /**

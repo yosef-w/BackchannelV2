@@ -61,6 +61,9 @@ export function usePushSetup(userType: UserType) {
             name: "Default",
             importance: Notifications.AndroidImportance.MAX,
             vibrationPattern: [0, 250, 250, 250],
+            // Android's native notification-channel LED color, not an app
+            // UI surface — unrelated to the Colors.* token palette.
+            // eslint-disable-next-line no-restricted-syntax
             lightColor: "#000000",
           });
         }

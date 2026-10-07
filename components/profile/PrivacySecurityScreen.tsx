@@ -24,15 +24,24 @@ import {
 import { Sentry } from "@/lib/sentry";
 import { changeEmail, changePassword } from "@/lib/api";
 import { authApi } from "@/lib/auth-api";
+import {
+  isAppleSignInSupported,
+  isGoogleSignInSupported,
+  signInWithApple,
+  signInWithGoogle,
+} from "@/lib/sso";
 import { isValidEmail } from "@/lib/validation";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useToastStore } from "@/stores/useToastStore";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import { EditorScreen } from "./EditorScreen";
 import { AndroidInputFix, Colors, Type } from "@/constants/theme";
-import { PRIVACY_POLICY_URL, TERMS_URL } from "@/constants/config";
+import {
+  PRIVACY_POLICY_URL,
+  SUPPORT_EMAIL,
+  TERMS_URL,
+} from "@/constants/config";
 
-const SUPPORT_EMAIL = "support@backchannel.app";
 
 type Step = "main" | "password" | "delete" | "email";
 
@@ -60,6 +69,16 @@ export function PrivacySecurityScreen({
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteError, setDeleteError] = useState("");
   const [deleting, setDeleting] = useState(false);
+  // Apple Guideline 5.1.1(v): a passwordless (SSO-only) account must be
+  // able to delete itself without a working password-reset email — Apple's
+  // private-relay addresses silently drop mail from senders it hasn't
+  // registered (see renderSetPasswordGate's email path above, which this
+  // replaces for deletion specifically). Re-verifies with a FRESH identity
+  // token from the same provider instead of a password.
+  const [ssoDeleteProvider, setSsoDeleteProvider] = useState<
+    "apple" | "google" | null
+  >(null);
+  const [ssoDeleteError, setSsoDeleteError] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [emailPassword, setEmailPassword] = useState("");
   const [emailError, setEmailError] = useState("");
@@ -111,8 +130,8 @@ export function PrivacySecurityScreen({
           <Text style={styles.deleteHeadline}>Check your inbox</Text>
           <Text style={styles.deleteSubtitle}>
             We sent a password setup link to {accountEmail}. Open it to
-            create your password, then come back here — don&apos;t forget
-            the spam folder if it doesn&apos;t show up in a minute.
+            create your password, then come back here. Check your spam
+            folder if it doesn&apos;t show up in a minute.
           </Text>
         </>
       ) : (
@@ -149,6 +168,7 @@ export function PrivacySecurityScreen({
   const resetDeleteFields = () => {
     setDeletePassword("");
     setDeleteError("");
+    setSsoDeleteError("");
   };
 
   const resetEmailFields = () => {
@@ -192,6 +212,41 @@ export function PrivacySecurityScreen({
           : msg || "Couldn't delete your account. Please try again.",
       );
       setDeleting(false);
+    }
+  };
+
+  const handleSsoDelete = async (provider: "apple" | "google") => {
+    if (ssoDeleteProvider) return;
+    setSsoDeleteError("");
+    setSsoDeleteProvider(provider);
+    try {
+      const identity =
+        provider === "apple"
+          ? await signInWithApple()
+          : await signInWithGoogle();
+      if (!identity) {
+        // User cancelled the native sheet — not an error, just back out.
+        setSsoDeleteProvider(null);
+        return;
+      }
+      await authApi.deleteAccountWithSso(
+        provider,
+        identity.identityToken,
+        refreshToken,
+      );
+      // Same as handleConfirmDelete: stay in the spinner state for the
+      // beat until the parent tears down and navigates away, rather than
+      // flashing back to tappable buttons on a dead account.
+      await onAccountDeleted();
+    } catch (err) {
+      Sentry.captureException(err, {
+        tags: { flow: "account_delete_sso", provider },
+      });
+      setSsoDeleteError(
+        (err instanceof Error && err.message) ||
+          "Couldn't delete your account. Please try again.",
+      );
+      setSsoDeleteProvider(null);
     }
   };
 
@@ -282,8 +337,8 @@ export function PrivacySecurityScreen({
           {renderSetPasswordGate(
             "Set a password",
             "You signed in with Apple or Google, so this account doesn't " +
-              "have a password yet. We'll email you a link to create one — " +
-              "after that, both sign-in methods work.",
+              "have a password yet. We'll email you a link to create one. " +
+              "After that, both sign-in methods work.",
           )}
         </EditorScreen>
       );
@@ -316,7 +371,7 @@ export function PrivacySecurityScreen({
           <TextInput
             style={styles.input}
             placeholder="Enter current password"
-            placeholderTextColor={Colors.faint}
+            placeholderTextColor={Colors.muted}
             value={currentPassword}
             onChangeText={setCurrentPassword}
             secureTextEntry
@@ -332,7 +387,7 @@ export function PrivacySecurityScreen({
           <TextInput
             style={styles.input}
             placeholder="Enter new password"
-            placeholderTextColor={Colors.faint}
+            placeholderTextColor={Colors.muted}
             value={newPassword}
             onChangeText={setNewPassword}
             secureTextEntry
@@ -348,7 +403,7 @@ export function PrivacySecurityScreen({
           <TextInput
             style={styles.input}
             placeholder="Re-enter new password"
-            placeholderTextColor={Colors.faint}
+            placeholderTextColor={Colors.muted}
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             secureTextEntry
@@ -400,8 +455,8 @@ export function PrivacySecurityScreen({
           {renderSetPasswordGate(
             "Set a password first",
             "Changing your email requires confirming a password, and this " +
-              "account doesn't have one yet — you signed in with Apple or " +
-              "Google. We'll email you a link to create one.",
+              "account doesn't have one yet because you signed in with Apple " +
+              "or Google. We'll email you a link to create one.",
           )}
         </EditorScreen>
       );
@@ -426,8 +481,8 @@ export function PrivacySecurityScreen({
             <Text style={styles.deleteHeadline}>Check your new inbox</Text>
             <Text style={styles.deleteSubtitle}>
               We sent a confirmation link to {newEmail.trim()}. Your email
-              won&apos;t change until you open it and confirm — including
-              your spam folder if it doesn&apos;t show up in a minute.
+              won&apos;t change until you open it and confirm. Check your
+              spam folder if it doesn&apos;t show up in a minute.
             </Text>
             <TouchableOpacity
               style={styles.updateBtn}
@@ -443,7 +498,7 @@ export function PrivacySecurityScreen({
         ) : (
           <>
             <Text style={styles.subtitle}>
-              We&apos;ll send a confirmation link to your new address — your
+              We&apos;ll send a confirmation link to your new address. Your
               email won&apos;t change until you open it.
             </Text>
 
@@ -453,7 +508,7 @@ export function PrivacySecurityScreen({
               <TextInput
                 style={styles.input}
                 placeholder="name@example.com"
-                placeholderTextColor={Colors.faint}
+                placeholderTextColor={Colors.muted}
                 value={newEmail}
                 onChangeText={setNewEmail}
                 keyboardType="email-address"
@@ -468,7 +523,7 @@ export function PrivacySecurityScreen({
               <TextInput
                 style={styles.input}
                 placeholder="Enter your password to confirm"
-                placeholderTextColor={Colors.faint}
+                placeholderTextColor={Colors.muted}
                 value={emailPassword}
                 onChangeText={setEmailPassword}
                 secureTextEntry
@@ -501,33 +556,119 @@ export function PrivacySecurityScreen({
 
   if (step === "delete") {
     if (!hasPassword) {
+      const appleSupported = isAppleSignInSupported();
+      const googleSupported = isGoogleSignInSupported();
+      const ssoBusy = !!ssoDeleteProvider;
       return (
         <EditorScreen
           visible={visible}
           onClose={handleClose}
           onBack={() => {
-            // Same shared-state concern as handleSendSetupLink's own
-            // comment: setupLinkSending/setupLinkSent are single screen-
-            // level state reused by all three "no password yet" gates
-            // (password/email/delete). Leaving THIS gate while its own
-            // request is in flight, then opening a DIFFERENT gate, used to
-            // show that other gate a spinner/result it never triggered.
-            // Blocking navigation away while sending keeps every gate's
-            // request confined to the screen the user actually triggered
-            // it from.
-            if (setupLinkSending) return;
+            if (ssoBusy || setupLinkSending) return;
+            resetDeleteFields();
             setSetupLinkSent(false);
             setStep("main");
           }}
           title="Delete Account"
         >
-          {renderSetPasswordGate(
-            "Set a password first",
-            "Deleting your account requires confirming a password, and " +
-              "this account doesn't have one yet — you signed in with " +
-              "Apple or Google. We'll email you a link to create one; once " +
-              "it's set, come back here to delete your account.",
+          <View style={styles.deleteIconCircle}>
+            <Trash2 color={Colors.ink} size={26} strokeWidth={2.2} />
+          </View>
+
+          <Text style={styles.deleteHeadline}>This is permanent</Text>
+          <Text style={styles.deleteSubtitle}>
+            Deleting your account erases everything, right away. There is
+            no grace period and no way to undo it. Since you signed in
+            with {appleSupported && googleSupported
+              ? "Apple or Google"
+              : appleSupported
+                ? "Apple"
+                : "Google"}, verify with that provider again to confirm
+            it&apos;s you.
+          </Text>
+
+          <View style={styles.deleteWarningCard}>
+            {[
+              "Your profile, photo, and resume are permanently erased",
+              "All matches and conversations are deleted for good",
+              "Your expressed interest, referrals, and check-in history are removed",
+            ].map((line) => (
+              <View key={line} style={styles.deleteWarningRow}>
+                <View style={styles.deleteWarningDot} />
+                <Text style={styles.deleteWarningText}>{line}</Text>
+              </View>
+            ))}
+          </View>
+
+          {ssoDeleteError ? (
+            <Text style={styles.errorText}>{ssoDeleteError}</Text>
+          ) : null}
+
+          {appleSupported && (
+            <TouchableOpacity
+              style={[
+                styles.deleteConfirmBtn,
+                ssoBusy && styles.deleteConfirmBtnDisabled,
+              ]}
+              onPress={() => handleSsoDelete("apple")}
+              disabled={ssoBusy}
+              activeOpacity={0.8}
+            >
+              {ssoDeleteProvider === "apple" ? (
+                <ActivityIndicator size="small" color={Colors.paper} />
+              ) : (
+                <Text style={styles.deleteConfirmBtnText}>
+                  Verify with Apple to Delete
+                </Text>
+              )}
+            </TouchableOpacity>
           )}
+          {googleSupported && (
+            <TouchableOpacity
+              style={[
+                styles.deleteConfirmBtn,
+                ssoBusy && styles.deleteConfirmBtnDisabled,
+                appleSupported && { marginTop: 10 },
+              ]}
+              onPress={() => handleSsoDelete("google")}
+              disabled={ssoBusy}
+              activeOpacity={0.8}
+            >
+              {ssoDeleteProvider === "google" ? (
+                <ActivityIndicator size="small" color={Colors.paper} />
+              ) : (
+                <Text style={styles.deleteConfirmBtnText}>
+                  Verify with Google to Delete
+                </Text>
+              )}
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            style={styles.deleteCancelBtn}
+            onPress={() => {
+              if (ssoBusy) return;
+              resetDeleteFields();
+              setStep("main");
+            }}
+            disabled={ssoBusy}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.deleteCancelBtnText}>Keep My Account</Text>
+          </TouchableOpacity>
+
+          {/* Never a dead end: on the rare device where neither native SSO
+              module is available, fall back to the email-setup-link gate
+              instead of leaving no path to delete at all. */}
+          {!appleSupported &&
+            !googleSupported &&
+            renderSetPasswordGate(
+              "Set a password first",
+              "Deleting your account requires confirming a password, and " +
+                "this account doesn't have one yet because you signed in " +
+                "with Apple or Google. We'll email you a link to create " +
+                "one. Once it's set, come back here to delete your account.",
+            )}
         </EditorScreen>
       );
     }
@@ -556,7 +697,7 @@ export function PrivacySecurityScreen({
           {[
             "Your profile, photo, and resume are permanently erased",
             "All matches and conversations are deleted for good",
-            "Your likes, referrals, and check-in history are removed",
+            "Your expressed interest, referrals, and check-in history are removed",
           ].map((line) => (
             <View key={line} style={styles.deleteWarningRow}>
               <View style={styles.deleteWarningDot} />
@@ -571,7 +712,7 @@ export function PrivacySecurityScreen({
           <TextInput
             style={styles.input}
             placeholder="Enter your password to continue"
-            placeholderTextColor={Colors.faint}
+            placeholderTextColor={Colors.muted}
             value={deletePassword}
             onChangeText={(t) => {
               setDeletePassword(t);
@@ -686,7 +827,7 @@ export function PrivacySecurityScreen({
           <View style={{ flex: 1, marginRight: 12 }}>
             <Text style={styles.rowLabel}>Contact Support</Text>
             <Text style={styles.rowDescription}>
-              Report a problem or get help — {SUPPORT_EMAIL}
+              Report a problem or get help at {SUPPORT_EMAIL}
             </Text>
           </View>
           <ChevronRight color={Colors.faint} size={20} />
@@ -754,24 +895,23 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     marginTop: 4,
   },
+  // Flat hairline group — the Docket rebrand retired the recessed box;
+  // rows sit on the paper between rules, same as HubSection.
   group: {
-    backgroundColor: Colors.offWhite,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
     marginBottom: 28,
-    overflow: "hidden",
   },
   row: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
     paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
   },
   actionRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
@@ -787,12 +927,10 @@ const styles = StyleSheet.create({
   deleteRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: Colors.offWhite,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    paddingHorizontal: 16,
     paddingVertical: 14,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: Colors.border,
     marginBottom: 12,
   },
   deleteTitle: { fontSize: 15, fontWeight: "700", color: Colors.ink },
@@ -884,12 +1022,12 @@ const styles = StyleSheet.create({
     marginBottom: 22,
     paddingHorizontal: 4,
   },
+  // Flat between hairlines, not a tinted box.
   deleteWarningCard: {
-    backgroundColor: Colors.offWhite,
-    borderRadius: 16,
-    borderWidth: 1,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
     borderColor: Colors.border,
-    padding: 16,
+    paddingVertical: 14,
     marginBottom: 24,
     gap: 10,
   },
@@ -929,13 +1067,10 @@ const styles = StyleSheet.create({
   },
   deleteConfirmBtnText: { color: Colors.paper, fontSize: 15, fontWeight: "800" },
   deleteCancelBtn: {
-    minHeight: 52,
-    paddingVertical: 14,
-    borderRadius: 14,
-    backgroundColor: Colors.surface,
+    minHeight: 44,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 10,
+    marginTop: 14,
   },
-  deleteCancelBtnText: { color: Colors.ink, fontSize: 15, fontWeight: "700" },
+  deleteCancelBtnText: { color: Colors.muted, fontSize: 14, fontWeight: "600" },
 });

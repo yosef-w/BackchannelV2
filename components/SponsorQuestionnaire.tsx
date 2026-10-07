@@ -154,19 +154,19 @@ const questions = [
     question: "Verify your employment",
     type: "email",
     placeholder: "name@company.com",
-    subtitle: "Optional — you can add and verify this later from your profile.",
+    subtitle: "Optional. You can add and verify this later from your profile.",
   },
   {
     id: 9,
     question: "Add a profile photo",
     type: "photo",
-    subtitle: "Candidates see this on your profile — a clear headshot builds trust",
+    subtitle: "Candidates see this on your profile. A clear headshot builds trust",
   },
   {
     id: 10,
     question: "Write a short bio",
     type: "bio",
-    subtitle: "We drafted one from your answers — edit it to sound like you",
+    subtitle: "We drafted one from your answers. Edit it to sound like you",
   },
 ];
 
@@ -396,7 +396,7 @@ export function SponsorQuestionnaire({
         errorMessage.includes("already exists")
       ) {
         showToast(
-          "This email is already registered — taking you to Sign In.",
+          "This email is already registered. Taking you to Sign In.",
           "error",
         );
         // Sponsor registration happens on the LAST question, so without this
@@ -559,8 +559,8 @@ export function SponsorQuestionnaire({
       setTimeout(() => {
         showToast(
           wasSsoRef.current
-            ? "Welcome! We sent a work email verification link — check your inbox and spam folder."
-            : "Welcome! We sent two verification emails (login + work) — check your inbox and spam folder.",
+            ? "Welcome! We sent a work email verification link. Check your inbox and spam folder."
+            : "Welcome! We sent two verification emails (login and work). Check your inbox and spam folder.",
           "success",
         );
       }, 500);
@@ -592,7 +592,7 @@ export function SponsorQuestionnaire({
           : undefined,
       });
       showToast(
-        `You're sponsoring ${selectedRole.TITLE || "this role"} — your deck will have applicants waiting.`,
+        `You're sponsoring ${selectedRole.TITLE || "this role"}. Candidates matched to it will start appearing for you.`,
         "success",
       );
     } catch (err) {
@@ -600,7 +600,7 @@ export function SponsorQuestionnaire({
       // They can sponsor a role from the Jobs tab any time.
       console.warn("[SponsorQuestionnaire] Failed to sponsor role:", err);
       showToast(
-        "Couldn't sponsor that role right now — you can do it from the Jobs tab.",
+        "Couldn't sponsor that role right now. You can do it from the Jobs tab.",
         "info",
       );
     } finally {
@@ -661,7 +661,7 @@ export function SponsorQuestionnaire({
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) {
         showToast(
-          "Photo access is off — enable it in Settings to add a photo.",
+          "Photo access is off. Enable it in Settings to add a photo.",
           "info",
         );
         return;
@@ -677,7 +677,7 @@ export function SponsorQuestionnaire({
       }
     } catch (error) {
       console.warn(error);
-      showToast("Couldn't open your photo library — please try again.", "error");
+      showToast("Couldn't open your photo library. Please try again.", "error");
     }
   };
 
@@ -687,7 +687,7 @@ export function SponsorQuestionnaire({
       const perm = await ImagePicker.requestCameraPermissionsAsync();
       if (!perm.granted) {
         showToast(
-          "Camera access is off — enable it in Settings to take a photo.",
+          "Camera access is off. Enable it in Settings to take a photo.",
           "info",
         );
         return;
@@ -847,6 +847,12 @@ export function SponsorQuestionnaire({
                     onPress={handlePickPhoto}
                     activeOpacity={0.8}
                     style={styles.photoCircle}
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      selectedPhotoUri
+                        ? "Change profile photo"
+                        : "Choose profile photo"
+                    }
                   >
                     {selectedPhotoUri ? (
                       <Image
@@ -888,7 +894,7 @@ export function SponsorQuestionnaire({
                 <View style={styles.bioWrapper}>
                   <TextInput
                     placeholder="A sentence or two about you"
-                    placeholderTextColor={Colors.faint}
+                    placeholderTextColor={Colors.muted}
                     value={bioText}
                     onChangeText={setBioText}
                     style={styles.bioInput}
@@ -905,7 +911,7 @@ export function SponsorQuestionnaire({
                     )}
                     <TextInput
                       placeholder={question.placeholder}
-                      placeholderTextColor={Colors.faint}
+                      placeholderTextColor={Colors.muted}
                       value={answers[currentQuestion] || ""}
                       onChangeText={(v) =>
                         setAnswers({ ...answers, [currentQuestion]: v })
@@ -1118,7 +1124,7 @@ export function SponsorQuestionnaire({
                     <TextInput
                       style={styles.rolePickerNoteInput}
                       placeholder="e.g. what the team is like, what we look for..."
-                      placeholderTextColor={Colors.faint}
+                      placeholderTextColor={Colors.muted}
                       value={roleInsiderNote}
                       onChangeText={setRoleInsiderNote}
                       multiline

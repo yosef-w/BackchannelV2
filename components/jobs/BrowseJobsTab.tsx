@@ -22,7 +22,7 @@ import { ScreenContainer } from "../ui/ScreenContainer";
 import { JobCard } from "./JobCard";
 import { JobsEmptyState } from "./JobsEmptyState";
 import { gridItemWidth, hitSlopTo44, useResponsive } from "@/lib/responsive";
-import { AndroidInputFix, Colors, Fonts, Type } from "@/constants/theme";
+import { AndroidInputFix, Colors, Fonts, Radii, Type } from "@/constants/theme";
 
 // Horizontal gap between grid cells — the list's own vertical rhythm
 // already comes from JobCard's `marginBottom`, so this only spaces columns.
@@ -182,7 +182,7 @@ export function BrowseJobsTab({
         <TextInput
           style={styles.searchInput}
           placeholder="Search roles or locations"
-          placeholderTextColor={Colors.faint}
+          placeholderTextColor={Colors.muted}
           value={searchQuery}
           onChangeText={onSetSearchQuery}
           autoCapitalize="none"
@@ -212,7 +212,7 @@ export function BrowseJobsTab({
             <View style={styles.noMatchesWrap}>
               <Text style={styles.noMatchesText}>
                 {q
-                  ? "Only roles you already sponsor match — see below"
+                  ? "Only roles you already sponsor match. See below"
                   : "You're sponsoring every open role at your company"}
               </Text>
             </View>
@@ -379,7 +379,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.ink,
     paddingVertical: 14,
     paddingHorizontal: 28,
-    borderRadius: 14,
+    borderRadius: Radii.pill,
   },
   didYouMeanCreateText: {
     color: Colors.paper,

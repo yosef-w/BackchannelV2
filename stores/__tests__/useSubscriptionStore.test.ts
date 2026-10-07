@@ -1,16 +1,17 @@
 /**
  * Contract tests for the subscription store's documented design rules:
- *   - With PREMIUM_ENABLED=false (the current shipped config) every public
- *     method is a no-op: RevenueCat is never touched and isPremium stays
- *     false. This is what makes flipping the flag the ONLY launch step.
- *   - With PREMIUM_ENABLED=true, entitlement detection drives isPremium and
- *     SDK errors are swallowed rather than crashing.
+ *   - With PREMIUM_ENABLED=false every public method is a no-op: RevenueCat
+ *     is never touched and isPremium stays false. This is what makes
+ *     flipping the flag the ONLY launch step.
+ *   - With PREMIUM_ENABLED=true, entitlement detection drives isPremium, a
+ *     purchase maps every SDK outcome to one PurchaseOutcome, and SDK errors
+ *     are swallowed rather than crashing.
  */
 
 jest.mock("@/lib/analytics/mixpanel", () => ({
-  trackPaywallShown: jest.fn(),
   trackPurchaseSucceeded: jest.fn(),
   trackPurchaseFailed: jest.fn(),
+  trackPurchasePending: jest.fn(),
   trackRestorePurchasesRequested: jest.fn(),
 }));
 jest.mock("@/lib/sentry", () => ({
@@ -23,6 +24,8 @@ const mockPurchases = {
   addCustomerInfoUpdateListener: jest.fn(),
   getOfferings: jest.fn(),
   getCustomerInfo: jest.fn(),
+  checkTrialOrIntroductoryPriceEligibility: jest.fn(),
+  purchasePackage: jest.fn(),
   logIn: jest.fn(),
   logOut: jest.fn(),
   restorePurchases: jest.fn(),
@@ -31,65 +34,79 @@ jest.mock("react-native-purchases", () => ({
   __esModule: true,
   default: mockPurchases,
   LOG_LEVEL: { DEBUG: "DEBUG" },
+  PURCHASES_ERROR_CODE: {
+    PURCHASE_CANCELLED_ERROR: "1",
+    PRODUCT_ALREADY_PURCHASED_ERROR: "6",
+    PAYMENT_PENDING_ERROR: "20",
+  },
+  INTRO_ELIGIBILITY_STATUS: {
+    INTRO_ELIGIBILITY_STATUS_UNKNOWN: 0,
+    INTRO_ELIGIBILITY_STATUS_INELIGIBLE: 1,
+    INTRO_ELIGIBILITY_STATUS_ELIGIBLE: 2,
+  },
 }));
 
-const mockRCUI = {
-  presentPaywall: jest.fn(),
-  presentCustomerCenter: jest.fn(),
-};
+const mockRCUI = { presentCustomerCenter: jest.fn() };
 jest.mock("react-native-purchases-ui", () => ({
   __esModule: true,
   default: mockRCUI,
-  PAYWALL_RESULT: {
-    PURCHASED: "PURCHASED",
-    RESTORED: "RESTORED",
-    NOT_PRESENTED: "NOT_PRESENTED",
-    ERROR: "ERROR",
-    CANCELLED: "CANCELLED",
-  },
 }));
 
 const activeInfo = (entitlement: string) => ({
   entitlements: { active: { [entitlement]: { isActive: true } } },
 });
 const emptyInfo = () => ({ entitlements: { active: {} } });
+const annual = {
+  identifier: "$rc_annual",
+  packageType: "ANNUAL",
+  product: { identifier: "bc_annual", price: 59.99, priceString: "$59.99" },
+} as never;
 
 beforeEach(() => {
   jest.clearAllMocks();
 });
 
-describe("PREMIUM_ENABLED = false (current shipped config)", () => {
-  // constants/config.ts currently exports PREMIUM_ENABLED = false, so the
-  // real module is used unmocked. If this suite starts failing because the
-  // flag flipped, that's the launch event — move these expectations to the
-  // flag-on suite.
-  const { useSubscriptionStore } = require("../useSubscriptionStore");
-  const store = () => useSubscriptionStore.getState();
-
-  it("initialize never configures RevenueCat", async () => {
-    await store().initialize();
-    expect(mockPurchases.configure).not.toHaveBeenCalled();
-    expect(store().isInitialized).toBe(false);
+describe("PREMIUM_ENABLED = false", () => {
+  let useSubscriptionStore: typeof import("../useSubscriptionStore").useSubscriptionStore;
+  beforeEach(() => {
+    jest.resetModules();
+    jest.doMock("@/constants/config", () => ({
+      PREMIUM_ENABLED: false,
+      RC_ENTITLEMENT_ID: "Backchannel Pro",
+      REVENUECAT_API_KEY_IOS: "ios-key",
+      REVENUECAT_API_KEY_ANDROID: "android-key",
+    }));
+    ({ useSubscriptionStore } = require("../useSubscriptionStore"));
   });
 
-  it("presentPaywall returns false without presenting", async () => {
-    expect(await store().presentPaywall()).toBe(false);
-    expect(mockRCUI.presentPaywall).not.toHaveBeenCalled();
+  it("initialize never configures RevenueCat", async () => {
+    await useSubscriptionStore.getState().initialize();
+    expect(mockPurchases.configure).not.toHaveBeenCalled();
+    expect(useSubscriptionStore.getState().isPremium).toBe(false);
+  });
+
+  it("purchasePackage is an error without touching the SDK", async () => {
+    expect(
+      await useSubscriptionStore.getState().purchasePackage(annual, "test"),
+    ).toBe("error");
+    expect(mockPurchases.purchasePackage).not.toHaveBeenCalled();
   });
 
   it("restorePurchases returns false without calling the SDK", async () => {
-    expect(await store().restorePurchases()).toBe(false);
+    expect(await useSubscriptionStore.getState().restorePurchases()).toBe(false);
     expect(mockPurchases.restorePurchases).not.toHaveBeenCalled();
   });
 
-  it("identifyUser / refreshCustomerInfo / reset are silent no-ops", async () => {
-    await store().identifyUser("user-1");
-    await store().refreshCustomerInfo();
-    await store().reset();
+  it("identifyUser / refreshCustomerInfo / refreshOfferings / reset are silent no-ops", async () => {
+    const s = useSubscriptionStore.getState();
+    await s.identifyUser("u1");
+    await s.refreshCustomerInfo();
+    await s.refreshOfferings();
+    await s.reset();
     expect(mockPurchases.logIn).not.toHaveBeenCalled();
     expect(mockPurchases.getCustomerInfo).not.toHaveBeenCalled();
+    expect(mockPurchases.getOfferings).not.toHaveBeenCalled();
     expect(mockPurchases.logOut).not.toHaveBeenCalled();
-    expect(store().isPremium).toBe(false);
   });
 });
 
@@ -105,7 +122,12 @@ describe("PREMIUM_ENABLED = true", () => {
       REVENUECAT_API_KEY_ANDROID: "android-key",
     }));
     mockPurchases.getCustomerInfo.mockResolvedValue(emptyInfo());
-    mockPurchases.getOfferings.mockResolvedValue({ current: null });
+    mockPurchases.getOfferings.mockResolvedValue({
+      current: { availablePackages: [annual] },
+    });
+    mockPurchases.checkTrialOrIntroductoryPriceEligibility.mockResolvedValue({
+      bc_annual: { status: 2, description: "eligible" },
+    });
     ({ useSubscriptionStore } = require("../useSubscriptionStore"));
   });
 
@@ -126,6 +148,19 @@ describe("PREMIUM_ENABLED = true", () => {
     expect(store().isInitialized).toBe(false);
   });
 
+  it("initialize loads packages and trial eligibility", async () => {
+    await store().initialize();
+    expect(store().packages).toHaveLength(1);
+    expect(store().offeringsStatus).toBe("ready");
+    expect(store().introEligibility.bc_annual).toBe(true);
+  });
+
+  it("an empty offering reads as an error so the picker can retry", async () => {
+    mockPurchases.getOfferings.mockResolvedValueOnce({ current: null });
+    await store().initialize();
+    expect(store().offeringsStatus).toBe("error");
+  });
+
   it("refreshCustomerInfo flips isPremium on an active entitlement", async () => {
     await store().initialize();
     mockPurchases.getCustomerInfo.mockResolvedValueOnce(
@@ -144,19 +179,52 @@ describe("PREMIUM_ENABLED = true", () => {
     expect(store().isPremium).toBe(false);
   });
 
-  it("presentPaywall returns true and refreshes after a purchase", async () => {
+  it("purchasePackage → purchased: premium on, celebration queued", async () => {
     await store().initialize();
-    mockRCUI.presentPaywall.mockResolvedValueOnce("PURCHASED");
+    mockPurchases.purchasePackage.mockResolvedValueOnce({
+      customerInfo: activeInfo("Backchannel Pro"),
+    });
+    expect(await store().purchasePackage(annual, "test")).toBe("purchased");
+    expect(store().isPremium).toBe(true);
+    expect(store().celebrationPending).toBe(true);
+  });
+
+  it("purchasePackage → cancelled: no error, no premium", async () => {
+    await store().initialize();
+    mockPurchases.purchasePackage.mockRejectedValueOnce({
+      code: "1",
+      userCancelled: true,
+    });
+    expect(await store().purchasePackage(annual, "test")).toBe("cancelled");
+    expect(store().isPremium).toBe(false);
+    expect(store().celebrationPending).toBe(false);
+  });
+
+  it("purchasePackage → pending on a deferred (Ask to Buy) purchase", async () => {
+    await store().initialize();
+    mockPurchases.purchasePackage.mockRejectedValueOnce({ code: "20" });
+    expect(await store().purchasePackage(annual, "test")).toBe("pending");
+  });
+
+  it("purchasePackage → restored when the store already owns it", async () => {
+    await store().initialize();
+    mockPurchases.purchasePackage.mockRejectedValueOnce({ code: "6" });
     mockPurchases.getCustomerInfo.mockResolvedValueOnce(
       activeInfo("Backchannel Pro"),
     );
-    expect(await store().presentPaywall("test")).toBe(true);
+    expect(await store().purchasePackage(annual, "test")).toBe("restored");
     expect(store().isPremium).toBe(true);
+    expect(store().celebrationPending).toBe(false);
   });
 
-  it("presentPaywall returns false on cancel", async () => {
-    mockRCUI.presentPaywall.mockResolvedValueOnce("CANCELLED");
-    expect(await store().presentPaywall("test")).toBe(false);
+  it("purchasePackage → error on anything else, never throws", async () => {
+    await store().initialize();
+    mockPurchases.purchasePackage.mockRejectedValueOnce({
+      code: "10",
+      message: "network",
+    });
+    expect(await store().purchasePackage(annual, "test")).toBe("error");
+    expect(store().isLoading).toBe(false);
   });
 
   it("reset logs out and clears premium even when logOut throws (anonymous)", async () => {

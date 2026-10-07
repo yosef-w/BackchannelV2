@@ -196,7 +196,7 @@ const questions = [
     question: "Start with your résumé",
     type: "file",
     subtitle:
-      "We'll build your profile from it automatically — or skip and fill it in yourself.",
+      "We'll build your profile from it automatically, or skip and fill it in yourself.",
   },
   {
     key: "industry",
@@ -234,7 +234,7 @@ const questions = [
     key: "photo",
     question: "Add a profile photo",
     type: "photo",
-    subtitle: "Sponsors see this first — a clear headshot goes a long way",
+    subtitle: "Sponsors see this first. A clear headshot goes a long way",
   },
   {
     key: "location",
@@ -435,7 +435,7 @@ export function ApplicantQuestionnaire({
       showToast(
         wasSso
           ? "Welcome! Your profile is ready."
-          : "Welcome! We sent a verification email — check your inbox and spam folder.",
+          : "Welcome! We sent a verification email. Check your inbox and spam folder.",
         "success",
       );
     }, 500);
@@ -454,7 +454,7 @@ export function ApplicantQuestionnaire({
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) {
         showToast(
-          "Photo access is off — enable it in Settings to add a photo.",
+          "Photo access is off. Enable it in Settings to add a photo.",
           "info",
         );
         return;
@@ -470,7 +470,7 @@ export function ApplicantQuestionnaire({
       }
     } catch (error) {
       console.warn(error);
-      showToast("Couldn't open your photo library — please try again.", "error");
+      showToast("Couldn't open your photo library. Please try again.", "error");
     }
   };
 
@@ -480,7 +480,7 @@ export function ApplicantQuestionnaire({
       const perm = await ImagePicker.requestCameraPermissionsAsync();
       if (!perm.granted) {
         showToast(
-          "Camera access is off — enable it in Settings to take a photo.",
+          "Camera access is off. Enable it in Settings to take a photo.",
           "info",
         );
         return;
@@ -886,7 +886,7 @@ export function ApplicantQuestionnaire({
           if (resumeHarvestClosedRef.current) return;
           setResumeFilled(true);
           showToast(
-            "Résumé read — we've filled in your experience and skills.",
+            "Résumé read. We've filled in your experience and skills.",
             "success",
           );
         } catch (lateErr) {
@@ -954,7 +954,7 @@ export function ApplicantQuestionnaire({
           // industry/role/skills steps (the safeIndex guard handles the
           // list shrinking).
           showToast(
-            "Your résumé is taking a moment — keep going and we'll fill in what we can.",
+            "Your résumé is taking a moment. Keep going and we'll fill in what we can.",
             "info",
           );
           void attemptLateRecovery(resumePhaseStartedAt);
@@ -966,7 +966,7 @@ export function ApplicantQuestionnaire({
           // not just toast (mirrors useResumePipeline).
           Sentry.captureException(err, { tags: { flow: "onboarding_resume" } });
           showToast(
-            "We couldn't read your résumé — it may be a scanned image. You can fill those details in yourself.",
+            "We couldn't read your résumé. It may be a scanned image. You can fill those details in yourself.",
             "info",
           );
           // resumeFilled stays false → the manual industry/role/skills steps show.
@@ -1121,7 +1121,7 @@ export function ApplicantQuestionnaire({
         const asset = result.assets[0];
         if (asset.size && asset.size > RESUME_MAX_SIZE_BYTES) {
           showToast(
-            "That résumé is over 10 MB — please upload a smaller file.",
+            "That résumé is over 10 MB. Please upload a smaller file.",
             "error",
           );
           return;
@@ -1289,7 +1289,7 @@ export function ApplicantQuestionnaire({
                       );
                     })}
                     <Text style={styles.comingSoonNote}>
-                      We&apos;re starting with tech — other industries are coming
+                      We&apos;re starting with tech. Other industries are coming
                       soon.
                     </Text>
                   </View>
@@ -1299,7 +1299,7 @@ export function ApplicantQuestionnaire({
                   <View style={styles.inputWrapper}>
                     <TextInput
                       placeholder={question.placeholder}
-                      placeholderTextColor={Colors.faint}
+                      placeholderTextColor={Colors.muted}
                       value={answers[question.key] || ""}
                       onChangeText={(v) =>
                         setAnswers({ ...answers, [question.key]: v })
@@ -1325,7 +1325,7 @@ export function ApplicantQuestionnaire({
                       />
                       <TextInput
                         placeholder="Search skills..."
-                        placeholderTextColor={Colors.faint}
+                        placeholderTextColor={Colors.muted}
                         value={searchQuery}
                         onChangeText={setSearchQuery}
                         autoCapitalize="none"
@@ -1426,6 +1426,12 @@ export function ApplicantQuestionnaire({
                       onPress={handlePickPhoto}
                       activeOpacity={0.8}
                       style={styles.photoCircle}
+                      accessibilityRole="button"
+                      accessibilityLabel={
+                        selectedPhotoUri
+                          ? "Change profile photo"
+                          : "Choose profile photo"
+                      }
                     >
                       {selectedPhotoUri ? (
                         <Image
@@ -1512,7 +1518,7 @@ export function ApplicantQuestionnaire({
                         <MapPin color={Colors.faint} size={20} />
                         <TextInput
                           placeholder="e.g., San Francisco, CA"
-                          placeholderTextColor={Colors.faint}
+                          placeholderTextColor={Colors.muted}
                           value={locationText}
                           onChangeText={setLocationText}
                           autoCapitalize="words"
@@ -1676,7 +1682,7 @@ export function ApplicantQuestionnaire({
               >
                 {finalizing
                   ? "Putting the finishing touches on your profile…"
-                  : "We're using your résumé to set things up — this'll just take a moment."}
+                  : "We're using your résumé to set things up. This will only take a moment."}
               </Animated.Text>
               <Animated.View
                 entering={FadeIn.delay(800)}
@@ -1703,7 +1709,7 @@ export function ApplicantQuestionnaire({
                   <Text style={styles.reviewTitleAccent}>found.</Text>
                 </Text>
                 <Text style={styles.reviewSub}>
-                  Your profile is built. A few questions remain — the parts a
+                  Your profile is built. A few questions remain, the parts a
                   résumé can&apos;t answer.
                 </Text>
               </ScreenContainer>
@@ -1789,7 +1795,7 @@ export function ApplicantQuestionnaire({
                   activeOpacity={0.85}
                 >
                   <Text style={styles.reviewPrimaryText}>
-                    Looks right — keep going
+                    Looks right, keep going
                   </Text>
                   <ArrowRight color={Colors.paper} size={18} />
                 </TouchableOpacity>

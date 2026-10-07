@@ -1,7 +1,7 @@
 import { ApplicantJobsBrowseView } from "@/components/ApplicantJobsBrowseView";
 import { JobsView } from "@/components/JobsView";
 import { useShell } from "@/components/shell/ShellContext";
-import { useIsFocused } from "@react-navigation/native";
+import { useIsFocused } from "expo-router/react-navigation";
 import React from "react";
 
 export default function JobsTab() {

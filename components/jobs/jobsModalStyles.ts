@@ -1,5 +1,5 @@
 import { StyleSheet } from "react-native";
-import { Colors, Radii } from "@/constants/theme";
+import { Colors, Fonts, Radii } from "@/constants/theme";
 
 /**
  * Shared style vocabulary for the Jobs-screen modals — the sponsor-job
@@ -40,7 +40,7 @@ export const jobsModalStyles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 8,
   },
-  modalMainTitle: { fontSize: 24, fontWeight: "800", color: Colors.ink },
+  modalMainTitle: { fontFamily: Fonts.serif, fontSize: 24, color: Colors.ink },
   modalSubTitle: {
     fontSize: 14,
     color: Colors.body,

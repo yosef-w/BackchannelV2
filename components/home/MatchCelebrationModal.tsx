@@ -256,9 +256,9 @@ export function MatchCelebrationModal({
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.matchSkipBtn}
                 onPress={onDismiss}
-                activeOpacity={0.8}
+                activeOpacity={0.7}
+                style={styles.matchSkipRow}
               >
                 <Text style={styles.matchSkipBtnText}>KEEP GOING</Text>
               </TouchableOpacity>
@@ -383,19 +383,16 @@ const styles = StyleSheet.create({
     letterSpacing: 1.8,
     color: Colors.paper,
   },
-  matchSkipBtn: {
-    height: 54,
-    borderRadius: 27,
+  // Quiet text, not a second bordered button beside the filled pill.
+  matchSkipRow: {
+    height: 44,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.paper,
   },
   matchSkipBtnText: {
     fontFamily: Fonts.sansBold,
     fontSize: 12,
     letterSpacing: 1.8,
-    color: Colors.body,
+    color: Colors.muted,
   },
 });

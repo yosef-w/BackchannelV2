@@ -1,8 +1,8 @@
 /**
  * useSubscriptionStore
  *
- * Central source of truth for subscription state.  All paywall and entitlement
- * logic lives here — components only import what they need.
+ * Central source of truth for subscription state.  All purchase and
+ * entitlement logic lives here — components only import what they need.
  *
  * Design rules:
  *  - Every public method is a no-op when PREMIUM_ENABLED = false so the flag
@@ -12,15 +12,22 @@
  *    zero SDK overhead in development / test mode.
  *  - All methods are wrapped in try/catch — a RevenueCat error must never
  *    crash the app.
+ *
+ * The paywall itself is ours (components/premium/PremiumCheckout.tsx):
+ * plans come from getOfferings(), the purchase goes through
+ * purchasePackage(). RevenueCat's own UI is used only for the Customer
+ * Center (manage / cancel), where nothing needs to be beautiful.
  */
 
 import { Platform } from "react-native";
 import Purchases, {
     CustomerInfo,
+    INTRO_ELIGIBILITY_STATUS,
     LOG_LEVEL,
+    PURCHASES_ERROR_CODE,
     PurchasesPackage,
 } from "react-native-purchases";
-import RevenueCatUI, { PAYWALL_RESULT } from "react-native-purchases-ui";
+import RevenueCatUI from "react-native-purchases-ui";
 import { create } from "zustand";
 import {
     PREMIUM_ENABLED,
@@ -30,13 +37,32 @@ import {
 } from "@/constants/config";
 import { Sentry } from "@/lib/sentry";
 import {
-    trackPaywallShown,
     trackPurchaseFailed,
+    trackPurchasePending,
     trackPurchaseSucceeded,
     trackRestorePurchasesRequested,
 } from "@/lib/analytics/mixpanel";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+/**
+ * What a purchase attempt came to. Callers branch on it for UI state:
+ *  - purchased: entitlement active now; celebration is queued.
+ *  - restored:  the store already had it (Product Already Purchased);
+ *               entitlement active, no celebration — restoring isn't buying.
+ *  - pending:   deferred by the store (Ask to Buy / bank approval). The
+ *               customer-info listener flips isPremium when it clears.
+ *  - cancelled: the user backed out of the native payment sheet.
+ *  - error:     a real failure (network, store, configuration).
+ */
+export type PurchaseOutcome =
+  | "purchased"
+  | "restored"
+  | "pending"
+  | "cancelled"
+  | "error";
+
+export type OfferingsStatus = "idle" | "loading" | "ready" | "error";
 
 interface SubscriptionState {
   /** True only when PREMIUM_ENABLED = true AND the user holds an active
@@ -46,14 +72,19 @@ interface SubscriptionState {
   customerInfo: CustomerInfo | null;
   /** Available packages from the current offering (monthly / yearly / lifetime). */
   packages: PurchasesPackage[];
+  /** Where the offerings fetch stands — drives the plan picker's skeleton
+   *  and its retry state. */
+  offeringsStatus: OfferingsStatus;
+  /** Per product id: is this user eligible for its intro offer (free
+   *  trial)? Absent or false means we never promise a trial we can't give. */
+  introEligibility: Record<string, boolean>;
   /** True while an async RC operation is in flight. */
   isLoading: boolean;
   /** True after configure() has been called successfully. */
   isInitialized: boolean;
   /** True right after a NEW purchase completes (not restores) — drives the
    *  one-time PremiumCelebration overlay rendered by app/_layout's host.
-   *  Can only ever become true while PREMIUM_ENABLED = true, since
-   *  presentPaywall() short-circuits otherwise. */
+   *  Can only ever become true while PREMIUM_ENABLED = true. */
   celebrationPending: boolean;
 
   // ── Actions ──────────────────────────────────────────────────────────────
@@ -78,13 +109,21 @@ interface SubscriptionState {
   refreshCustomerInfo: () => Promise<void>;
 
   /**
-   * Present the RevenueCat paywall for the current offering.
-   * Returns true if the user purchased or restored, false otherwise.
-   * `trigger` identifies which entry point opened it (deck-done, profile
-   * upgrade row, marketplace gate, …) for the Paywall Shown event — see
-   * mixpanel.ts's Subscription section.
+   * (Re)fetch the current offering's packages and the user's intro-offer
+   * eligibility. Called by initialize(); the plan picker calls it again
+   * from its retry state.
    */
-  presentPaywall: (trigger: string) => Promise<boolean>;
+  refreshOfferings: () => Promise<void>;
+
+  /**
+   * Buy a package through the native store sheet. `trigger` names the
+   * surface that sold it (marketplace_gate, like_limit_gate, deck_done,
+   * profile_upgrade_row) for the Purchase events.
+   */
+  purchasePackage: (
+    pkg: PurchasesPackage,
+    trigger: string,
+  ) => Promise<PurchaseOutcome>;
 
   /**
    * Open the RevenueCat Customer Center (subscription management / support).
@@ -120,6 +159,8 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
   isPremium: false,
   customerInfo: null,
   packages: [],
+  offeringsStatus: "idle",
+  introEligibility: {},
   isLoading: false,
   isInitialized: false,
   celebrationPending: false,
@@ -144,7 +185,8 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
       Purchases.configure({ apiKey });
 
       // Subscribe to real-time customer info updates (e.g. subscription
-      // renewed in the background, purchase completed on another device).
+      // renewed in the background, purchase completed on another device,
+      // a pending Ask-to-Buy purchase finally approved).
       Purchases.addCustomerInfoUpdateListener((info) => {
         set({
           customerInfo: info,
@@ -156,16 +198,7 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
 
       // Fetch initial customer info and available packages.
       await get().refreshCustomerInfo();
-
-      try {
-        const offerings = await Purchases.getOfferings();
-        const current = offerings.current;
-        if (current) {
-          set({ packages: current.availablePackages });
-        }
-      } catch (err) {
-        console.warn("[Subscription] Failed to fetch offerings:", err);
-      }
+      await get().refreshOfferings();
     } catch (err) {
       console.warn("[Subscription] initialize failed:", err);
       // If RC never configures, isPremium stays false and every entitlement
@@ -218,59 +251,103 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
     }
   },
 
-  // ── presentPaywall ─────────────────────────────────────────────────────────
+  // ── refreshOfferings ───────────────────────────────────────────────────────
 
-  presentPaywall: async (trigger: string): Promise<boolean> => {
-    if (!PREMIUM_ENABLED) return false;
-    // Guard lives here instead of in each caller so every entry point gets
-    // it for free — MarketplaceGateModal already had its own local
-    // `purchasing` state to prevent a double-tap presenting the native
-    // paywall UI twice concurrently, but HomeView's deck-done "Unlock with
-    // Premium" CTA and ProfileView's "Upgrade to Pro" row both called this
-    // directly with no such guard of their own. isLoading is already
-    // documented as "true while an async RC operation is in flight" — this
-    // was the one RC operation that didn't actually set it.
-    if (get().isLoading) return false;
-    set({ isLoading: true });
-    trackPaywallShown({ trigger });
+  refreshOfferings: async () => {
+    if (!PREMIUM_ENABLED || !get().isInitialized) return;
+    set({ offeringsStatus: "loading" });
     try {
-      const result = await RevenueCatUI.presentPaywall();
-      switch (result) {
-        case PAYWALL_RESULT.PURCHASED:
-          // Refresh so isPremium updates immediately after purchase.
-          await get().refreshCustomerInfo();
-          // A NEW purchase gets the celebration; a restore (below) does
-          // not — restoring isn't buying.
-          set({ celebrationPending: true });
-          trackPurchaseSucceeded({ restored: false });
-          return true;
-        case PAYWALL_RESULT.RESTORED:
-          await get().refreshCustomerInfo();
-          trackPurchaseSucceeded({ restored: true });
-          return true;
-        case PAYWALL_RESULT.ERROR:
-          // A real presentation/processing failure, distinct from the
-          // user simply closing the sheet (CANCELLED, below) — that
-          // distinction is exactly what was missing before this event.
-          trackPurchaseFailed("presentation_error");
-          return false;
-        case PAYWALL_RESULT.NOT_PRESENTED:
-        case PAYWALL_RESULT.CANCELLED:
-        default:
-          return false;
+      const offerings = await Purchases.getOfferings();
+      const packages = offerings.current?.availablePackages ?? [];
+      set({ packages, offeringsStatus: packages.length ? "ready" : "error" });
+
+      // Trial eligibility is iOS-only in the SDK; anywhere it can't answer,
+      // nobody gets promised a trial (the picker shows the plain price).
+      if (packages.length && Platform.OS === "ios") {
+        try {
+          const ids = packages.map((p) => p.product.identifier);
+          const result =
+            await Purchases.checkTrialOrIntroductoryPriceEligibility(ids);
+          const eligibility: Record<string, boolean> = {};
+          for (const id of ids) {
+            eligibility[id] =
+              result[id]?.status ===
+              INTRO_ELIGIBILITY_STATUS.INTRO_ELIGIBILITY_STATUS_ELIGIBLE;
+          }
+          set({ introEligibility: eligibility });
+        } catch (err) {
+          console.warn("[Subscription] eligibility check failed:", err);
+        }
       }
     } catch (err) {
-      console.warn("[Subscription] presentPaywall failed:", err);
-      trackPurchaseFailed(err instanceof Error ? err.message : "unknown");
-      // Returns false identically to a plain user cancel (PAYWALL_RESULT
-      // .CANCELLED, above) — without this, a real SDK/network failure here
-      // is completely indistinguishable from someone just closing the
-      // sheet, in the one place in the app where that ambiguity costs
-      // actual revenue.
+      console.warn("[Subscription] Failed to fetch offerings:", err);
+      set({ offeringsStatus: "error" });
       Sentry.captureException(err, {
-        tags: { flow: "revenuecat_present_paywall" },
+        tags: { flow: "revenuecat_offerings" },
       });
-      return false;
+    }
+  },
+
+  // ── purchasePackage ────────────────────────────────────────────────────────
+
+  purchasePackage: async (pkg, trigger): Promise<PurchaseOutcome> => {
+    if (!PREMIUM_ENABLED) return "error";
+    // One purchase at a time — a double-tap must never open two native
+    // payment sheets. The checkout disables itself too; this is the floor.
+    if (get().isLoading) return "error";
+    set({ isLoading: true });
+    try {
+      const { customerInfo } = await Purchases.purchasePackage(pkg);
+      const premium = isEntitlementActive(customerInfo);
+      set({ customerInfo, isPremium: premium });
+      if (premium) {
+        // A NEW purchase gets the celebration; restores (below) do not.
+        set({ celebrationPending: true });
+        trackPurchaseSucceeded({
+          restored: false,
+          trigger,
+          packageType: pkg.packageType,
+        });
+        return "purchased";
+      }
+      // The store took the money but the entitlement hasn't landed yet —
+      // the update listener will flip isPremium when it does.
+      trackPurchasePending({ trigger, packageType: pkg.packageType });
+      return "pending";
+    } catch (err) {
+      const e = err as {
+        code?: string;
+        userCancelled?: boolean | null;
+        message?: string;
+      };
+      if (
+        e.userCancelled ||
+        e.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR
+      ) {
+        return "cancelled";
+      }
+      if (e.code === PURCHASES_ERROR_CODE.PAYMENT_PENDING_ERROR) {
+        trackPurchasePending({ trigger, packageType: pkg.packageType });
+        return "pending";
+      }
+      if (e.code === PURCHASES_ERROR_CODE.PRODUCT_ALREADY_PURCHASED_ERROR) {
+        // They already own it on this Apple ID — sync and treat as a restore.
+        await get().refreshCustomerInfo();
+        if (get().isPremium) {
+          trackPurchaseSucceeded({
+            restored: true,
+            trigger,
+            packageType: pkg.packageType,
+          });
+          return "restored";
+        }
+      }
+      console.warn("[Subscription] purchasePackage failed:", err);
+      trackPurchaseFailed(e.code ? `code_${e.code}` : e.message ?? "unknown");
+      Sentry.captureException(err, {
+        tags: { flow: "revenuecat_purchase", trigger },
+      });
+      return "error";
     } finally {
       set({ isLoading: false });
     }

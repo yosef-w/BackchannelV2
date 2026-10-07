@@ -163,12 +163,8 @@ export function SponsorReferralDetailModal({
                     location={location || undefined}
                     pill={
                       isReferred
-                        ? { label: "Referred" }
-                        : {
-                            label: "Withdrawn",
-                            color: Colors.body,
-                            bgColor: Colors.surface,
-                          }
+                        ? { label: "Referred", tone: "active" as const }
+                        : { label: "Withdrawn", tone: "muted" as const }
                     }
                     onClose={onClose}
                   />
@@ -274,7 +270,6 @@ const styles = StyleSheet.create({
   scroll: { flexShrink: 1 },
   noteText: {
     fontSize: 14,
-    fontStyle: "italic",
     fontWeight: "500",
     color: Colors.body,
     lineHeight: 21,

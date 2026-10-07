@@ -1,0 +1,18 @@
+# Apple 5.1.1(v): in-app account deletion must be discoverable.
+# Asserts the entry point exists. Deliberately does NOT open the delete step
+# or confirm anything.
+appId: com.yosefwolday.backchannelv2
+---
+- runFlow: subflows/login.yaml
+- tapOn: "Account.*"
+- scrollUntilVisible:
+    element: "Privacy & Security"
+    direction: DOWN
+- tapOn: "Privacy & Security"
+- assertVisible: "ACCOUNT REMOVAL"
+- scrollUntilVisible:
+    element: "Delete Account"
+    direction: DOWN
+- assertVisible: "Delete Account"
+- assertVisible: "Remove your account permanently"
+- tapOn: "Close"

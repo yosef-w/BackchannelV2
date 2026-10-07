@@ -95,7 +95,7 @@ export function CreateJobReviewScreen({
 
           <Text style={styles.helperText}>
             {wasAutoFilled
-              ? "Here's what we found — fix anything that's off before it goes live."
+              ? "Here's what we found. Fix anything that's off before it goes live."
               : "We couldn't auto-read this page. Fill in the basics below."}
           </Text>
 
@@ -217,7 +217,7 @@ function Field({
         style={[styles.input, style]}
         value={value}
         onChangeText={onChangeText}
-        placeholderTextColor={Colors.faint}
+        placeholderTextColor={Colors.muted}
         {...inputProps}
       />
     </View>

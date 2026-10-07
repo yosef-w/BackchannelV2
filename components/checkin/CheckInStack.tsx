@@ -340,7 +340,7 @@ export function CheckInStack({
         <Text style={styles.recapSubtitle}>
           {summary.updated > 0
             ? recapSubtitle(summary.updated)
-            : "You skipped everything this pass — we'll nudge you again later."}
+            : "You skipped everything this pass. We'll nudge you again later."}
         </Text>
 
         <View style={styles.recapList}>
@@ -620,7 +620,7 @@ export function CheckInStack({
                 <TextInput
                   style={styles.noteInput}
                   placeholder={notePlaceholder ?? "Add a note (optional)"}
-                  placeholderTextColor={Colors.faint}
+                  placeholderTextColor={Colors.muted}
                   multiline
                   value={note}
                   onChangeText={setNote}

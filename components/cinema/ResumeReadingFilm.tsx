@@ -241,7 +241,7 @@ function DriftScene({ lines }: { lines: string[] }) {
         </Animated.View>
       ))}
       <Animated.View entering={FadeInDown.delay(800 + lines.length * 800).duration(650)}>
-        <Text style={styles.kicker}>STILL READING — THIS IS YOU</Text>
+        <Text style={styles.kicker}>STILL READING · THIS IS YOU</Text>
       </Animated.View>
     </>
   );
@@ -445,7 +445,7 @@ export function ResumeReadingFilm({
                 { word: "is" },
                 { word: "ready.", accent: true },
               ]}
-              subtitle="Here's what we found — fine-tune anything later."
+              subtitle="Here's what we found. Fine-tune anything later."
               durationMs={2600}
             />
           </Animated.View>
@@ -468,7 +468,7 @@ export function ResumeReadingFilm({
                 breathing
                 caption={
                   <>
-                    Still reading — <Text style={styles.sceneCaptionAccent}>almost there.</Text>
+                    Still reading. <Text style={styles.sceneCaptionAccent}>Almost there.</Text>
                   </>
                 }
               />
@@ -542,6 +542,9 @@ const styles = StyleSheet.create({
   },
   docHeading: {
     height: 9,
+    // One-off illustration tint for the skeleton document graphic, not a
+    // real UI surface — no shared token is a close enough match.
+    // eslint-disable-next-line no-restricted-syntax
     backgroundColor: "#E9E6DE",
     width: "52%",
     marginTop: 14,

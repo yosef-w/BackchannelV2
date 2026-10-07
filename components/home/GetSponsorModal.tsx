@@ -1,4 +1,4 @@
-import { BlurView } from "expo-blur";
+import { SheetOverlay } from "@/components/ui/SheetOverlay";
 import { X } from "@/components/ui/icons";
 import { ConfirmPop } from "@/components/cinema/ConfirmPop";
 import React from "react";
@@ -45,15 +45,7 @@ export function GetSponsorModal({
 }: GetSponsorModalProps) {
   const company = companyName ?? "this company";
   return (
-    <View style={styles.modalOverlay}>
-      <TouchableOpacity
-        style={StyleSheet.absoluteFill}
-        activeOpacity={1}
-        onPress={onClose}
-      >
-        <BlurView intensity={60} style={StyleSheet.absoluteFill} tint="dark" />
-      </TouchableOpacity>
-
+    <SheetOverlay onClose={onClose} style={styles.modalOverlay}>
       <Animated.View
         entering={SlideInDown}
         exiting={SlideOutDown}
@@ -79,8 +71,8 @@ export function GetSponsorModal({
             </Text>
             <Text style={styles.body}>
               Ask, and we&apos;ll let people at {company} know you&apos;re
-              interested — and you&apos;ll hear the moment someone puts their
-              name on it.
+              interested. You&apos;ll hear the moment someone puts their name
+              on it.
             </Text>
             <TouchableOpacity
               style={[styles.pill, isRequestingSponsor && styles.pillBusy]}
@@ -97,7 +89,7 @@ export function GetSponsorModal({
               )}
             </TouchableOpacity>
             <Text style={styles.footnote}>
-              You&apos;re also on the waitlist — any sponsor who signs on will see you.
+              You&apos;re also on the waitlist. Any sponsor who signs on will see you.
             </Text>
           </>
         ) : (
@@ -122,7 +114,7 @@ export function GetSponsorModal({
           </View>
         )}
       </Animated.View>
-    </View>
+    </SheetOverlay>
   );
 }
 
@@ -182,6 +174,9 @@ const styles = StyleSheet.create({
   },
   bodyCenter: { textAlign: "center" },
   pill: {
+    // The success face centers its children — without this the pill
+    // shrinks to its label and "DONE" gets crushed.
+    alignSelf: "stretch",
     marginTop: 26,
     height: 54,
     borderRadius: 27,

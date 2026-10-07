@@ -5,10 +5,21 @@ const expoConfig = require('eslint-config-expo/flat');
 module.exports = defineConfig([
   expoConfig,
   {
-    ignores: ['dist/*'],
+    // .expo/ holds generated router types and Metro's static error overlay
+    // scaffolding; neither is ours to lint.
+    ignores: ['dist/*', '.expo/*'],
   },
   {
     rules: {
+      // eslint-config-expo 57 promotes the React Compiler rules to errors.
+      // The app already compiles under the React Compiler (which bails out of
+      // any component it can't prove safe), so these flag existing patterns
+      // rather than new regressions. Kept visible as warnings; burn them down
+      // in a dedicated pass rather than inside an SDK upgrade.
+      'react-hooks/set-state-in-effect': 'warn',
+      'react-hooks/refs': 'warn',
+      'react-hooks/immutability': 'warn',
+      'react-hooks/purity': 'warn',
       // The lucide barrel re-exports all ~1,667 icons and Metro doesn't
       // tree-shake — one barrel import ships the whole catalog. Icons are
       // re-exported individually from components/ui/icons.ts; add new ones
@@ -45,6 +56,43 @@ module.exports = defineConfig([
           ],
         },
       ],
+      // Design-system drift guards — added 2026-09-26 after a full-app audit
+      // found a hardcoded near-black (`#0F0F11` instead of `Colors.ink`) and a
+      // modal headline missing `Fonts.serif` entirely, both invisible to
+      // tests/typecheck since they're valid RN style values. Baseline was
+      // clean (0 hits) at the time these were added — a hit means an actual
+      // regression, not pre-existing debt to suppress line-by-line.
+      'no-restricted-syntax': [
+        'error',
+        {
+          // Matches any `xColor`/`Color`/`color` key whose value is a literal
+          // hex string. rgba()/rgb() aren't matched: white/black overlays on
+          // ink/blur backdrops are a legitimate, common exception, and a
+          // string-based selector can't tell those apart from a real color
+          // token bypass — hex has no such exception, so it's safe to ban
+          // outright.
+          selector:
+            "Property[key.name=/(^color$|Color$)/i] > Literal[value=/^#[0-9A-Fa-f]{3,8}$/]",
+          message:
+            'Hardcoded hex color — use a Colors.* token from constants/theme.ts instead (add one there first if it genuinely needs to be new).',
+        },
+        {
+          // Valid usage is always a token reference (`Fonts.serif`,
+          // `Type.heading.fontFamily`), which is a MemberExpression, not a
+          // Literal — so any literal string here is a bypass by construction.
+          selector: 'Property[key.name="fontFamily"] > Literal',
+          message:
+            'Literal fontFamily string — reference Fonts.* from constants/theme.ts instead (e.g. Fonts.serif, Fonts.sansSemiBold).',
+        },
+      ],
+    },
+  },
+  {
+    // constants/theme.ts IS where the Colors/Fonts tokens are defined — the
+    // guards above would otherwise flag their own source of truth.
+    files: ['constants/theme.ts'],
+    rules: {
+      'no-restricted-syntax': 'off',
     },
   },
   {

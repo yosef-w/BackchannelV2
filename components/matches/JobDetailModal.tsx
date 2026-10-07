@@ -106,7 +106,7 @@ export function JobDetailModal({
     setIsReporting(false);
     setReportSheetOpen(false);
     if (ok) {
-      showToast("Reported. You won't be shown to each other again.", "success");
+      showToast("Reported and blocked. You won't be shown to each other again.", "success");
       onClose();
     } else {
       showToast(
@@ -271,7 +271,7 @@ export function JobDetailModal({
                 <Timeline
                   steps={[
                     {
-                      label: "Liked",
+                      label: "Interested",
                       sub: new Date(job.likedAt).toLocaleDateString("en-US", {
                         month: "short",
                         day: "numeric",

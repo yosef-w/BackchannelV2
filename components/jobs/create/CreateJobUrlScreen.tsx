@@ -1,6 +1,6 @@
 import { Globe, Link2, X } from "@/components/ui/icons";
 import { isValidUrl } from "@/lib/validation";
-import { requireOptionalNativeModule } from "expo-modules-core";
+import { requireOptionalNativeModule } from "expo";
 import React, { useEffect, useState } from "react";
 import {
     StyleSheet,
@@ -80,7 +80,7 @@ export function CreateJobUrlScreen({
         <View style={styles.content}>
           <Text style={styles.heading}>Paste the job link</Text>
           <Text style={styles.subheading}>
-            We&apos;ll read the posting and build the listing for you — you can
+            We&apos;ll read the posting and build the listing for you. You can
             fine-tune everything before it goes live.
           </Text>
 

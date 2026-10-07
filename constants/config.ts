@@ -32,7 +32,7 @@ export const API_BASE_URL =
  *   gated features will be enforced. Set to true when you are ready to test
  *   or ship paid subscriptions.
  */
-export const PREMIUM_ENABLED = false;
+export const PREMIUM_ENABLED = true;
 
 /**
  * SSO_ENABLED — Sign in with Apple / Google (docs/BACKEND_CHANGES_NEEDED.md §S)
@@ -79,6 +79,34 @@ export const REVENUECAT_API_KEY_ANDROID =
 
 /** The entitlement ID as configured in the RevenueCat dashboard. */
 export const RC_ENTITLEMENT_ID = "Backchannel Pro";
+
+// ─── Deck & Like Limits ────────────────────────────────────────────────────
+//
+// Daily caps on an APPLICANT's outbound interest ("Interested"), per
+// subscription tier. Sponsors are deliberately uncapped — they can connect
+// with every one of their daily candidates, and they're not who we ask to
+// subscribe. Centralized here so tuning either cap later is a
+// one-line change: nothing else in the app hardcodes these numbers, and the
+// paywall/gate copy that mentions them (MarketplaceGateModal, DeckDoneCard)
+// reads straight from this object too, so the copy can't silently drift out
+// of sync with the actual enforcement again (see docs/BACKEND_CHANGES_
+// NEEDED.md §Y — that's exactly what happened with the old "unlimited deck"
+// claim, which the enforcement never actually delivered).
+//
+// The daily *card count* (10, see HomeView's DECK_SIZE) is NOT part of this
+// object — it's currently the same for free and premium, since a genuinely
+// larger/unlimited card volume for premium needs backend support that
+// doesn't exist yet (§Y). This object only controls how many of those cards
+// a user is allowed to swipe right on per day.
+export const DAILY_LIKE_LIMITS = {
+  free: 2,
+  premium: 5,
+} as const;
+
+/** The daily like cap for a given entitlement state. */
+export function getDailyLikeCap(isPremium: boolean): number {
+  return isPremium ? DAILY_LIKE_LIMITS.premium : DAILY_LIKE_LIMITS.free;
+}
 
 // ─── Google Places ────────────────────────────────────────────────────────────
 //
@@ -132,3 +160,18 @@ export const GOOGLE_ANDROID_CLIENT_ID =
 export const TERMS_URL = "https://backchannelapp.netlify.app/terms.html";
 export const PRIVACY_POLICY_URL =
   "https://backchannelapp.netlify.app/privacy.html";
+
+// ─── App Store ──────────────────────────────────────────────────────────────
+// Same ID as eas.json's submit.production.ios.ascAppId. Used by the
+// force-update screen (components/ui/AppConfigGate.tsx) and anywhere else
+// that needs to send someone to the store page.
+export const APP_STORE_ID = "6762495044";
+export const APP_STORE_URL = `https://apps.apple.com/app/id${APP_STORE_ID}`;
+
+// ─── Support ────────────────────────────────────────────────────────────────
+// Single source of truth for the support address (was a local constant in
+// PrivacySecurityScreen.tsx). NOTE: the backchannel.app domain has no MX
+// records yet (docs/BACKEND_CHANGES_NEEDED.md §W #4/#5) — mail to this
+// address bounces until that's set up. Nothing else in the app changes when
+// it is.
+export const SUPPORT_EMAIL = "support@backchannel.app";

@@ -260,7 +260,7 @@ export function PromptsIntake({
               <Search size={18} color={Colors.faint} />
               <TextInput
                 placeholder="Search prompts…"
-                placeholderTextColor={Colors.faint}
+                placeholderTextColor={Colors.muted}
                 value={search}
                 onChangeText={setSearch}
                 style={styles.searchInput}
@@ -337,7 +337,7 @@ export function PromptsIntake({
                       (editorPrompt && examples[editorPrompt]) ||
                       "Share your answer…"
                     }
-                    placeholderTextColor={Colors.faint}
+                    placeholderTextColor={Colors.muted}
                     value={draft}
                     onChangeText={setDraft}
                     style={styles.editorInput}
