@@ -1,4 +1,4 @@
-const { withPodfile } = require("@expo/config-plugins");
+const { withPodfile } = require("expo/config-plugins");
 
 // @react-native-google-signin/google-signin pulls in GoogleUtilities,
 // RecaptchaInterop, and AppCheckCore transitively — none of them define

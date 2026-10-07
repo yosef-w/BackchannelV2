@@ -64,7 +64,6 @@ export async function initAnalytics(): Promise<void> {
       initialized = true;
     } catch (err) {
       // Init failures shouldn't break the app — analytics will simply no-op.
-      // eslint-disable-next-line no-console
       console.warn("[Analytics] init failed:", err);
     } finally {
       initPromise = null;
@@ -151,7 +150,6 @@ export async function identifyUser(args: IdentifyArgs): Promise<void> {
       user_id: args.userId,
     });
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.warn("[Analytics] identify failed:", err);
   }
 }
@@ -172,7 +170,6 @@ export async function resetUser(): Promise<void> {
   try {
     await mixpanel.reset();
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.warn("[Analytics] reset failed:", err);
   }
 }
@@ -194,7 +191,6 @@ function safeTrack(event: string, properties?: EventProps): void {
     }
     mixpanel.track(event, cleaned);
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.warn(`[Analytics] track("${event}") failed:`, err);
   }
 }
@@ -953,7 +949,6 @@ export function trackTesterModeEnabled(args: {
     mixpanel.registerSuperProperties({ is_tester: true });
     mixpanel.getPeople().set({ is_tester: true });
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.warn("[Analytics] Failed to stamp is_tester:", err);
   }
 }

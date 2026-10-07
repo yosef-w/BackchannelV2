@@ -467,12 +467,12 @@ const styles = StyleSheet.create({
     color: Colors.muted,
   },
   hiddenWebview: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     opacity: 0,
   },
   webview: { flex: 1 },
   rawViewContainer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: Colors.paper,
   },
   rawViewSafeArea: { backgroundColor: Colors.paper },
