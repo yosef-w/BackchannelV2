@@ -15,7 +15,7 @@
 > 2. **`viewed`-on-top-card — handled on our side.** The app no longer writes `viewed` to the feed history when a card merely becomes current; pass/like/waitlist each record their own action at swipe time, so an unswiped card comes back next open. Nothing to change on the backend; the 14-day decay stays.
 > 3. **Password-validator error copy — accepted as-is**; the app shows `error` verbatim.
 > 4. **Change-password tokens, WebSocket subprotocol, rotated refresh token — all done in the app** (branch `fix/refresh-rotation-and-asks-cleanup`, ships in 1.0.2). `?token=` can be removed once that build is the floor; we'll tell you.
-> 5. **RevenueCat webhook** — Yosef is creating the webhook in the RevenueCat dashboard pointed at `https://oyster-app-4pg5w.ondigitalocean.app/api/webhooks/revenuecat/` and will send you the Authorization value privately for `REVENUECAT_WEBHOOK_SECRET`.
+> 5. **RevenueCat webhook — created 2026-10-16** (RevenueCat integration `whintgr7b322042ad`, URL `https://oyster-app-4pg5w.ondigitalocean.app/api/webhooks/revenuecat/`, all environments/events). Yosef will send you the Authorization value privately; set it as `REVENUECAT_WEBHOOK_SECRET` in the DO prod env, then "Send test event" in the RevenueCat dashboard should return 200.
 >
 > Shipped items are removed to keep this lean; the backend's record now lives in its [`KNOWN_ISSUES.md`](../../Backchannel-backend/BackChannel-backend/docs/KNOWN_ISSUES.md) "Recently fixed" list (their `BACKEND_CHANGES_SHIPPED.md` was retired in the 2026-07 docs overhaul).
 
