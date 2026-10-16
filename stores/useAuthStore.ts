@@ -326,8 +326,11 @@ export const useAuthStore = create<AuthState>((set) => ({
         return false;
       }
 
-      // Backend only returns a new access token — reuse the existing refresh token.
-      await useAuthStore.getState().setAuthTokens(data.access, refreshToken);
+      // The backend rotates refresh tokens and blacklists the old one, so the
+      // rotated token must replace ours or the next refresh is rejected.
+      await useAuthStore
+        .getState()
+        .setAuthTokens(data.access, data.refresh ?? refreshToken);
       return true;
     } catch (error) {
       // fetch() itself threw — offline, DNS, timeout, TLS blip. Not

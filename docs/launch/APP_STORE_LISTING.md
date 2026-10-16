@@ -153,7 +153,7 @@ We're a small team and we read every message: support@backchannel.app
 |---|---|---|
 | Support URL (required) | `https://backchannelapp.netlify.app` | Apple requires a real page with contact info. Add a visible "Support" section with the support email and a short FAQ (delete account, report someone, Hide My Email) before submitting. A `/support` page is better than the bare homepage. |
 | Marketing URL (optional) | `https://backchannelapp.netlify.app` | Same domain is fine. |
-| Privacy Policy URL (required) | `https://backchannelapp.netlify.app/privacy.html` | **[CONFIRM]** exact path from `PRIVACY_POLICY_URL`. |
+| Privacy Policy URL (required) | `https://backchannelapp.netlify.app/privacy.html` | Verified live (200) 2026-10-03; matches `PRIVACY_POLICY_URL`. |
 | Terms | Apple's standard EULA, or custom via the description text | Terms page exists at `/terms.html`. If using it as a custom EULA, paste in the "License Agreement" field. |
 
 Universal links: `applinks:backchannelapp.netlify.app` is in `app.json`. Make sure the AASA file is served from that domain, or deep links will fall back to the website.
@@ -185,13 +185,13 @@ Answer per the current App Store Connect questionnaire. Values below reflect wha
 | Medical/treatment info | None | |
 | **User-generated content** | **Yes** | Profiles (bio, photo), job posts, and messages are user-authored. |
 | **Messaging / chat between users** | **Yes** | Matched users message each other. |
-| Unrestricted web access | No | Only specific links open externally (terms, privacy, apply URLs). **[CONFIRM]** |
+| Unrestricted web access | No | Only specific links open externally (terms, privacy, apply URLs). Answered No in App Store Connect 2026-10-05. |
 | In-app purchases | None currently | Premium disabled. Revisit when enabled. |
 | Parental controls / age assurance | No | |
 
 Moderation features to state where Apple asks: reporting from the feed card, profile sheets, and message threads; report reasons (harassment, spam or scam, inappropriate content, fake profile, other); unmatch; a reported user is blocked from the reporter server-side; terms acceptance at signup; contact info published.
 
-Expect the computed rating to land around 13+ or 16+ because of UGC and messaging. **[CONFIRM]** the result Apple computes, and that it agrees with the minimum age in the Terms. It is a professional-networking app, so declaring a higher rating is safer than arguing a lower one.
+Apple computed 4+ from the answers (UGC and messaging alone don't raise it); an age-rating override of **16+** was set 2026-10-05 so the store rating matches the Terms' minimum age.
 
 ---
 
@@ -233,7 +233,7 @@ MODERATION
 Every report is emailed to our moderation inbox, where a person reviews it and acts on it promptly (removal of content and/or account, and the reporter is already protected from further contact the moment they report). Contact: support@backchannel.app. [CONFIRM before submitting: backend MODERATION_ALERT_EMAIL is set in production and support@backchannel.app receives mail, per docs/BACKEND_CHANGES_NEEDED.md §W #4–5.]
 
 ACCOUNT DELETION (Guideline 5.1.1(v))
-Account > Privacy & Security > Delete Account. This removes the account and its data, including for accounts created with Apple / Hide My Email. [CONFIRM: SSO-only deletion works end-to-end on the backend, see §W #3.]
+Account > Privacy & Security > Delete Account. This removes the account and its data, including for accounts created with Apple / Hide My Email. Backend support for Apple/Google re-authentication on delete is live in production as of 2026-10-13 (backend PR #158).
 
 IN-APP PURCHASES (Guideline 3.1.1 / 3.1.2)
 One auto-renewable subscription, "BackChannel Pro", for applicants only. The free app is fully usable without it. Pro raises the daily limit on expressions of interest from 2 to 5 and unlocks actions in the job marketplace. Sponsors are never asked to pay.
