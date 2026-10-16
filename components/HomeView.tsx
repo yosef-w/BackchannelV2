@@ -1124,8 +1124,11 @@ export function HomeView({
     if (sponsorId) fetchSponsorProfileFor(String(sponsorId));
   }, [userType, currentData, fetchSponsorProfileFor]);
 
-  // Record "viewed" in the feed history and Mixpanel whenever the active
-  // card changes. Fire-and-forget — failures must never block the UI.
+  // Track the card impression in Mixpanel whenever the active card changes.
+  // The server-side feed history is NOT written here: the backend hides a
+  // "viewed" card for 14 days, so recording it on becoming current meant a
+  // card the user never swiped vanished on the next open. Pass/like/waitlist
+  // each record their own action at swipe time, which is what "seen" means.
   useEffect(() => {
     if (!currentData) return;
     if (userType === "applicant") {
@@ -1135,18 +1138,12 @@ export function HomeView({
           "isSponsored" in currentData
             ? Boolean(currentData.isSponsored)
             : false;
-        recordJobFeedAction(String(jobId), "viewed").catch(() => {});
         trackJobCardViewed({ jobId: String(jobId), isSponsored });
       }
     } else {
       const card = currentData as ProfileDeckCard;
       const applicantUserId = card?.USER_ID || card?.id;
       if (applicantUserId && activeSponsoredJobId) {
-        recordProfileFeedAction(
-          activeSponsoredJobId,
-          String(applicantUserId),
-          "viewed",
-        ).catch(() => {});
         trackProfileCardViewed({
           applicantUserId: String(applicantUserId),
           jobId: activeSponsoredJobId,

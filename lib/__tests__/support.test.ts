@@ -5,7 +5,7 @@ describe("buildSupportMailto", () => {
 
   it("addresses the support inbox with a topic-specific subject", () => {
     const url = buildSupportMailto({ ...base, topic: "problem" });
-    expect(url.startsWith("mailto:support@backchannel.app?subject=")).toBe(true);
+    expect(url.startsWith("mailto:support@backchannel.it.com?subject=")).toBe(true);
     expect(decodeURIComponent(url)).toContain("something's not working");
   });
 

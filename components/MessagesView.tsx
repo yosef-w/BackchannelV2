@@ -555,10 +555,10 @@ export function MessagesView({
         // Connect to WebSocket for real-time messages. Built from the same
         // env-configured API host as every REST call (see WS_BASE_URL) so
         // switching environments doesn't require a second hardcoded URL.
-        const wsUrl = `${WS_BASE_URL}/ws/chat/${selectedConversation}/?token=${accessToken}`;
-        // Never log the full URL — it carries the access token in the query
-        // string, and this line was previously leaking it into device logs.
-        ws = new WebSocket(wsUrl);
+        // The JWT travels in the Sec-WebSocket-Protocol header ("bearer",
+        // token), never in the URL, so it can't land in proxy access logs.
+        const wsUrl = `${WS_BASE_URL}/ws/chat/${selectedConversation}/`;
+        ws = new WebSocket(wsUrl, ["bearer", accessToken]);
       } catch (err) {
         console.warn("[MessagesView] Failed to connect to WebSocket:", err);
         scheduleReconnect();
@@ -749,8 +749,8 @@ export function MessagesView({
       try {
         // Same env-configured host as the per-conversation socket above —
         // see WS_BASE_URL.
-        const wsUrl = `${WS_BASE_URL}/ws/inbox/?token=${accessToken}`;
-        ws = new WebSocket(wsUrl);
+        const wsUrl = `${WS_BASE_URL}/ws/inbox/`;
+        ws = new WebSocket(wsUrl, ["bearer", accessToken]);
       } catch (err) {
         console.warn("[MessagesView] Inbox WebSocket failed to open:", err);
         scheduleReconnect();

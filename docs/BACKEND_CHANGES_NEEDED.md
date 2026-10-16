@@ -1,105 +1,49 @@
 # Backend Changes Needed
 
-**Last updated:** 2026-09-27 (added **§AE** — pulled the `backchannel.it.com` universal-link checklist and the support-email domain decision out into their own section addressed to Nico specifically, so they don't get missed; added **§Y** — real "unlimited" premium deck volume, not urgent, queued behind PREMIUM_ENABLED and server-side entitlement verification; added **§X** — two ready-to-apply fixes, written up instead of pushed as a branch: transactional-email deep-linking + résumé-parse timeout race)
+**Last updated:** 2026-10-16 — reconciled against both October backend batches (PRs #157–#200, all live in prod). Everything shipped is removed; only open items remain. History of what shipped lives in git and the backend's `docs/FRONTEND_HANDOFF_2026-10-16_PRELAUNCH.md`.
+
 **Frontend repo:** `BackchannelV2`
 **Backend repo:** `Backchannel-backend/BackChannel-backend`
 
-> **Open items:** **§AE** — for Nico specifically (🟠 medium, new, 2026-09-27): what `backchannel.it.com` needs before we switch email links to it (three items: serve an AASA file, a Cloudflare skip rule for `/.well-known/*`, and a fallback page — full checklist + copy-pasteable JSON in §AE), plus the support email domain having no MX record (blocks launch — pick a domain, add MX, tell us if the address changes). **§X** — two ready-to-apply fixes (🟠 medium, new, 2026-09-22), written up as full explanation + exact diff rather than pushed as a branch/PR since this is Nico's repo: transactional emails (verify/reset/welcome) link to the marketing website instead of deep-linking into the app, and a Daphne-proxy-timeout-vs-Anthropic-call race that produces false "resume couldn't be parsed" errors on requests that actually succeeded — see §X. **§W** — App Store submission alignment (🔴 high, new, 2026-09-22): the rewritten Privacy Policy/Terms going live at `backchannelapp.netlify.app` state things the backend has to keep true (résumé only after match → §V #1 is now launch-blocking), SSO-only accounts (Apple "Hide My Email") have no working path to delete their account (Apple 5.1.1(v)), and support/moderation email needs `Reply-To` + `MODERATION_ALERT_EMAIL` + Apple relay-domain registration — see §W. **§V** — security audit (🔴 high): a joint frontend+backend read-only audit ahead of App Store submission found no broken authorization or SQL injection (both clean), but the sponsor feed returns applicant phone/DOB/résumé before any match, uploaded images are public-read forever, and Django + a few libs are past their security-support window. Entirely backend-owned — see §V for the full breakdown and fix order. **§F** — feed relevance (🔴 high): signup answers barely shape what users see — the sponsored half of the applicant deck is `ORDER BY random()` and never scored, and the sponsor deck shows every applicant in the DB rather than candidates for the sponsored job (fix order in §F). **§S** — SSO (Apple + Google): **both sides are code-complete** — backend endpoints shipped on their `develop` (PR #152), frontend wired to the implemented contract behind `SSO_ENABLED = false`. What remains is config, not code: Apple/Google console credentials → backend env vars + frontend env vars, backend develop→main deploy, then flip the flag and EAS build (full checklist in §S). **§B** — confirm whether `GET /api/profile/` returns `BIO`; if not, add it (small, but it's silent user-visible data loss on re-login). **§L** — drop/ignore unused profile columns (street/ZIP/country/phone/DOB/LinkedIn — cleanup + PII minimization, low priority, coordinate timing with backend; do **not** drop `PORTFOLIO_URL`, it's still live).
+> **Open items (2026-10-16):** **Ops, launch-blocking (values emailed to Nico 2026-10-16)** — `REVENUECAT_WEBHOOK_SECRET`, `SUPPORT_EMAIL` + `MODERATION_ALERT_EMAIL` = `support@backchannel.it.com`, `DEFAULT_FROM_EMAIL` on `backchannel.it.com` in the DO prod env (§W #4, §Y #1), SPF/DKIM TXT records for `backchannel.it.com` in DO DNS (§AE #2; the mailbox itself exists now), confirm prod `FRONTEND_URL` (§AB #2). **§AE #1** AASA on `backchannel.it.com`. **§V** — only #2 (profile photos still public; résumé photos done) and #5 (answered below: keep as-is) remain, plus the Low/Info list. **§F #3** SQL-side filtering + flipping `FEED_SCOPE_SPONSOR_DECK` in prod. **§AD** #1/#2/#3/#4/#5/#6. **§X #1 / §AB #2** are the same ops item. **§Y #2/#3, §Z, §AC, §AA, §L** post-launch.
+>
+> **Answers to the questions in your 2026-10-16 handoff (so you're unblocked):**
+> 1. **§V #5 registration enumeration — keep as-is for launch.** The explicit "email already in use" is better UX for a cold-start product, registration is already throttled 10/h/IP, and App Review doesn't require the generic response. Revisit post-launch.
+> 2. **`viewed`-on-top-card — handled on our side.** The app no longer writes `viewed` to the feed history when a card merely becomes current; pass/like/waitlist each record their own action at swipe time, so an unswiped card comes back next open. Nothing to change on the backend; the 14-day decay stays.
+> 3. **Password-validator error copy — accepted as-is**; the app shows `error` verbatim.
+> 4. **Change-password tokens, WebSocket subprotocol, rotated refresh token — all done in the app** (branch `fix/refresh-rotation-and-asks-cleanup`, ships in 1.0.2). `?token=` can be removed once that build is the floor; we'll tell you.
+> 5. **RevenueCat webhook — created 2026-10-16** (RevenueCat integration `whintgr7b322042ad`, URL `https://oyster-app-4pg5w.ondigitalocean.app/api/webhooks/revenuecat/`, all environments/events). Yosef will send you the Authorization value privately; set it as `REVENUECAT_WEBHOOK_SECRET` in the DO prod env, then "Send test event" in the RevenueCat dashboard should return 200.
 >
 > Shipped items are removed to keep this lean; the backend's record now lives in its [`KNOWN_ISSUES.md`](../../Backchannel-backend/BackChannel-backend/docs/KNOWN_ISSUES.md) "Recently fixed" list (their `BACKEND_CHANGES_SHIPPED.md` was retired in the 2026-07 docs overhaul).
 
-## §W — App Store submission: keep the published policy true + SSO deletion + support email 🔴 High priority (new section, 2026-09-22 — for Nico)
+## §W — App Store submission: what's still open after the 2026-10-13 batch 🟠 Ops + confirmations (section trimmed 2026-10-15)
 
-**Status (2026-09-22):** frontend is on its final App Store readiness pass. Two things happened this week that create backend asks:
+**Done and live in prod (removed from this list):** #1 pre-match PII stripped from `GET /api/profiles/pack/` (backend #157, SQL-inspection + response tests); #3 SSO step-up re-auth on `POST /api/account/delete/` accepting `{provider, identity_token, refresh_token?}` exactly as the app sends it (#158; 403 if the token belongs to another account, 503 if the provider is down); #5 `Reply-To: SUPPORT_EMAIL` on every outbound mail (#159, env `SUPPORT_EMAIL`, default `support@backchannel.it.com`); #6 purge covers `user_info.device_tokens`; #7 notification prefs gate the push, not just the feed row. #2 is now tracked only under §V #2 / #9.
 
-1. **The Privacy Policy and Terms were rewritten** (Bluejay Labs LLC, Texas) to describe *exactly* what the product does today, checked claim-by-claim against both repos. They're going live at `backchannelapp.netlify.app/privacy.html` and `/terms.html`, and the app now shows "By continuing, you agree to our Terms of Service and Privacy Policy" at every signup path. That turns a few current backend behaviors from "audit findings" into "statements we've publicly made to users" — those are items 1–2 below.
-2. **A reviewer-style walk of every auth flow** found one flow a reviewer can't complete (item 3), and the App Store 1.2 (UGC) work on the frontend — Report/Block is now reachable from profile sheets, the job sheet, and the deck card, not just inside a thread — means reports will actually start arriving (items 4–5).
+### 🟠 Ops (no code)
 
-Nothing here is a redesign. Every item is a small, well-located change; file:line refs are against the backend checkout at `67ef0f9` (`fix/resume-parse-race-and-email-deep-links`).
-
-> **Frontend side already done** (so nothing below is waiting on us): signup consent line; Report/Block entry points everywhere a person or posting is shown, all calling the existing `POST /api/reports/`; Sentry `attachScreenshot` off; Mixpanel IP-geolocation off; privacy manifest corrected; daily deck reminders made opt-out. The policy names **Anthropic as the only AI vendor** and **Resend as the email provider** — both matched what's in the repo/env as far as we could see; shout if either is wrong.
-
-### 🔴 Must land before real applicants upload résumés (same timeline as launch)
-
-1. **§V #1 is now a published promise, not just a finding.** The new policy says, in plain words: *"Your resume file is shared with a Sponsor once you and that Sponsor have matched."* That's what the app *displays* (the sponsor deck never renders `RESUME_DATA`, `PHONE_NUMBER`, or `DATE_OF_BIRTH`) — but `fetch_profile_pack` (`queries/profiles.py:224-231`) still puts all three into every card of `GET /api/profiles/pack/`, to any self-registered sponsor, with no work-email gate at the API layer. We can't word our way out of it (the truthful sentence would be "anyone who registers as a sponsor can pull your résumé contents before you match"). **Ask (unchanged from §V #1):** drop those three columns from the pack SELECT. `PHONE_NUMBER`/`DATE_OF_BIRTH` are never collected by the app anymore (§L), so nothing consumes them. **Acceptance:** a sponsor-token `GET /api/profiles/pack/` response contains no `RESUME_DATA`, `PHONE_NUMBER`, or `DATE_OF_BIRTH` keys; matched-profile endpoints unchanged.
-
-2. **Two more policy statements to keep true (both already tracked, just linking them):** the policy says a Sponsor's **login email and work email are never shown to other users** → §V #9 (`sponsor_email` still returned to matched applicants by `/api/matches/`) needs to land or we soften that sentence. And the policy currently discloses, honestly, that **profile photos are on a public-link CDN** ("anyone with the exact link can view it") because of §V #2; when §V #2 ships (private + presigned), tell us and we'll tighten the wording.
-
-### 🔴 Apple 5.1.1(v) — SSO-only accounts can't delete themselves
-
-3. **`/api/account/delete/` is password-gated, and passwordless accounts have no working path.** `services/auth.py:607-610`: `if not users_q.has_password(user_id): return Result.bad_request(_NO_PASSWORD_MSG)`. Apple reviewers test exactly this (Sign in with Apple + Hide My Email → delete account), and the old fallback ("Set a password first," which emails a forgot-password link) silently fails for Apple's `@privaterelay.appleid.com` addresses unless the sending domain is registered for Apple's private relay (still true regardless — see the ask below). **Frontend is now done** (`components/profile/PrivacySecurityScreen.tsx`, `lib/auth-api.ts`'s `deleteAccountWithSso`): a passwordless account's Delete Account screen now shows "Verify with Apple/Google to Delete" instead of the email gate, re-runs `signInWithApple()`/`signInWithGoogle()` on tap, and POSTs:
-   ```
-   POST /api/account/delete/
-   { "provider": "apple" | "google", "identity_token": "<fresh token>", "refresh_token": "<current>" }
-   ```
-   **This is the one remaining blocker for App Store submission** — the frontend call above hits the *existing* password-only endpoint today and gets the same 400 `_NO_PASSWORD_MSG` an SSO user always got, so nothing is fixed for a reviewer until the backend side ships. **Ask (unchanged):** accept that payload shape as the re-auth for deletion when the account has no password — same verification path as sign-in (must resolve to the *same* `sso_identities` row as the caller's `user_id`; reject otherwise), then the existing purge. Keep the password form for password accounts. **Also (ops, not code):** register the sending domain for Apple's private relay regardless — it's what lets *verification / reset / work-email* mail reach Hide-My-Email users at all, not just deletion.
-
-### 🟠 Support & moderation email — reports are about to start arriving
-
-4. **`MODERATION_ALERT_EMAIL` must be set in prod.** `django_bc/settings.py:279` defaults it to `""`; `services/email.py:112-119` then *silently skips* the operator alert and files the report with only a log line. `docs/API_REFERENCE.md:2386` promises reports are acted on within 24h (and we say so in App Review notes). With the new in-app entry points, real reports will land. **Ask:** set it in the DO app env to `support@backchannel.app` (Yosef is setting up MX for the domain — it has none today). Optional hardening: log at `warning` on startup in prod when it's unset, same pattern as the `EMAIL_HOST` hard-fail.
-
-5. **Outbound mail invites replies to a no-reply address on a domain with no MX.** `DEFAULT_FROM_EMAIL` = `BackChannel <noreply@backchannel.app>` (`settings.py:262`), and four templates end with *"reply to this email — we'd love to hear from you"*: `templates/email/welcome.html:63`, `verify_email.html:44`, `verify_work_email.html:44`, `change_email.html:47`. Replies bounce. **Ask (pick one):** (a) add `reply_to=[settings.SUPPORT_EMAIL]` to the `EmailMultiAlternatives` in `services/email.py:31` with a new `SUPPORT_EMAIL` env (default `support@backchannel.app`), or (b) change the copy to "email us at support@backchannel.app". (a) is nicer. Either way the policy, Terms, and app all point at `support@backchannel.app` now.
+4. **`MODERATION_ALERT_EMAIL` must be set in the DO prod env.** The code side is done (#159: richer alerts, correct `queue_url`, and a prod-only startup warning when it's unset) — but the warning is all that happens until the variable exists. Value: `support@backchannel.it.com` (emailed 2026-10-16).
 
 ### 🟢 Confirmations (no code expected, just a yes/no)
 
-6. **Account purge removes push-token rows.** `delete_account` → `purge_q.delete_rows` (`services/auth.py:632`). The app does *not* call `unregisterDevice` before delete (it can't — the token is gone after). Please confirm the purge covers `devices` (else a deleted account keeps getting pushes — 5.1.1(v)).
-7. **`notification_preferences` gates push *sending*, not just the in-app feed.** The app's Notification toggles PATCH `notification_preferences`; `services/notifications.py:create_notification` is documented as the gate. Confirm a disabled type suppresses the *push*, not only the feed row — a reviewer flipping a toggle and still getting the push reads as a broken setting.
 8. **Snowflake Cortex autofill (`/api/autofill/`, `services/autofill.py`, Mistral Large 2)** — the mobile app never calls it, so the policy names Anthropic as the *only* AI provider and describes Snowflake as the database host. If a feature that hits Cortex ships (browser autofill, etc.), the policy has to add it *first*. Flagging so it doesn't slip.
 9. **Job-search text** — if applicant search queries (`title`/`location` params on browse) are logged or retained server-side, tell us and we'll add "search history" to the policy; today it says analytics never receives them (true on the client).
 
-**Fix order suggestion:** 1 → 3 → 4 → 5 → 6/7 (confirm) → 2 as its own items ship.
+---
+
+## §X — Transactional-email links 🟠 Ops only now (section trimmed 2026-10-16)
+
+**Done:** #2 résumé-parse false-failure race (backend #187: `max_retries=0`, per-stage budgets under DO's 100 s edge timeout; the app's parse timeout is 150 s so it never aborts first).
+
+### 1. Email links are `FRONTEND_URL`-driven — the only thing left is the env value
+
+The verify/reset links are built as `<FRONTEND_URL>/verify-email?token=…` and `/reset-password?token=…`. Nothing to code; set prod `FRONTEND_URL` to the https host the app's universal links trust (see §AB #2 for which host and the ordering constraint). The original `APP_SCHEME_URL` proposal is withdrawn in favour of https links.
 
 ---
 
-## §X — Two ready-to-apply fixes, written up here instead of pushed as a branch 🟠 Medium priority (new section, 2026-09-22 — for Nico)
+## §Y — Premium: entitlement record ✅ #1 done; deck volume 🟢 post-launch (updated 2026-10-16)
 
-**Why this is here instead of a PR:** these were worked out locally against a checkout of this repo while chasing down a couple of bugs, but since this repo is Nico's, they're written up as a full explanation + exact diff instead of a branch/PR — so it's his call whether to take them as-is, adapt them, or have his own AI regenerate the same fix from this description. Nothing has been pushed anywhere; the local branch these came from has been deleted.
-
-### 1. Transactional emails link to the marketing website instead of deep-linking into the app
-
-**Symptom:** the verification, password-reset, email-change, and work-email-verification links (and the welcome email's "Open BackChannel" button) all point to `{FRONTEND_URL}/<path>?token=...` — the marketing website. That site has no page to hand the token off to the app, so a user tapping the link lands on the website with nothing happening. The app-side routes (`app/verify-email.tsx`, `app/reset-password.tsx`) are already fully built to handle a token arriving via deep link — they just never receive one today.
-
-**Fix:** add an `APP_SCHEME_URL` setting (defaults to the app's real custom scheme, `backchannelv2://`, so it works with zero deployment config changes) and switch the five affected links to use it instead of `FRONTEND_URL`. `FRONTEND_URL` is untouched and still used for the actual website and the operator report-queue link.
-
-- **`django_bc/settings.py`** — add near `FRONTEND_URL` (~line 262):
-  ```python
-  # Custom URL scheme for deep-linking transactional email links (email
-  # verification, password reset, welcome) directly into the mobile app
-  # instead of the marketing website — see the BackchannelV2 app's app.json
-  # "scheme" and app/verify-email.tsx / app/reset-password.tsx, which already
-  # read `?token=` off whatever URL opened them. No trailing "/" — call
-  # sites append the path directly (e.g. f"{APP_SCHEME_URL}verify-email?token=...").
-  APP_SCHEME_URL = os.environ.get("APP_SCHEME_URL", "backchannelv2://")
-  ```
-- **`bc_microservices/services/email.py`** — swap `settings.FRONTEND_URL` for `settings.APP_SCHEME_URL` (and drop the leading `/`) in: `send_password_reset_email`'s `reset_url`, `send_welcome_email`'s `frontend_url` template var, `send_verification_email`'s `verify_url`, `send_email_change_verification`'s `verify_url`, `send_work_email_verification`'s `verify_url`. Five call sites total, same one-line change each: `f"{settings.FRONTEND_URL}/verify-email?token={token}"` → `f"{settings.APP_SCHEME_URL}verify-email?token={token}"` (and equivalent for the other paths).
-- **`.env.example`** — document the new var next to `FRONTEND_URL`, with a one-line comment noting the default already matches `app.json`'s scheme.
-
-**Acceptance:** a fresh signup's verification email link opens the app (not a browser) and lands on `app/verify-email.tsx` with the token populated; same for password reset.
-
-**Known follow-up, not part of this fix:** `backchannelv2://` is a custom scheme, not a Universal Link (`https://...`) — fine for now, but a custom scheme fails silently if the app isn't installed (no "open in App Store" fallback the way a Universal Link gets). Not urgent, just flagging for whenever there's bandwidth to move to real Universal Links.
-
-### 2. Résumé-parse false-failure race between Daphne's proxy timeout and the Anthropic call
-
-**Symptom:** applicants intermittently get a "resume couldn't be parsed" error, but the résumé ends up correctly parsed/classified moments later anyway — the client is told it failed for a request that actually succeeded.
-
-**Root cause:** Daphne's `--http-timeout` was `60s` (`Dockerfile`), under the `90s` read-timeout budget for the extraction call to Anthropic (`bc_microservices/services/documents.py`) and close to the `60s` classify budget. When a call took 60–90s, Daphne severed the client's connection and reported failure at the 60s mark, while the Django view kept running in its worker thread, finished when Anthropic responded, and unconditionally wrote the successful result to Postgres anyway. Compounding it: neither Anthropic client had `max_retries` set, so the SDK's default (2 retries) retries an *entire* 60–90s call on a plain read timeout — silently tripling worst-case latency and making the race against Daphne's timeout far more likely to fire.
-
-**Fix:**
-- **`bc_microservices/services/documents.py`** — add `max_retries=0` to both `anthropic.Anthropic(...)` constructions (`_extract_text_anthropic` and `_classify_text_anthropic`), so a slow call fails fast and predictably instead of silently retrying into a proxy timeout.
-- **`Dockerfile`** — raise daphne's `--http-timeout` from `60` to `150`, clearing the 90s extraction budget (now tightly bounded since retries are off) with real margin for the base64/CDN-upload/DB-write work around it.
-- **`docker-compose.yml`** — pass the same `--http-timeout 150` explicitly on the local dev command, so local runs match production instead of silently falling back to Daphne's own default.
-
-**Verification note:** wasn't able to run the Django test suite when this was worked out (no local Python env at hand). Checked `bc_microservices/tests/test_document_parsing.py` by reading it directly — it doesn't assert on the Anthropic client's constructor kwargs, so `max_retries=0` shouldn't change any existing test's expected call shape, but this should still run through CI before merging.
-
-**Frontend companion (already shipped, no backend dependency):** the frontend's own client-side timeouts were reconciled to match, plus a "harvest" mechanism so a request that outlives whatever timeout fires still gets its result picked up instead of leaving the UI stuck on a stale error.
-
-**Not done, flagged separately:** the backend still collapses every résumé-parse failure — a genuinely corrupt file, a rate limit, a transient 5xx — into one generic message with no way for the client to tell retryable from terminal. Left alone since it changes the response contract; worth a follow-up if it comes up again.
-
----
-
-## §Y — Premium: real "unlimited" daily deck volume 🟠 Medium — Premium ships ON in v1 (updated 2026-10-05; new section 2026-09-23 — for Nico)
-
-**Update 2026-10-05: `PREMIUM_ENABLED` is now `true` on `feat/premium-on` and v1 launches with the BackChannel Pro subscription live.** That promotes item 1 below (server-side entitlement verification) from "future nice-to-have" to **wanted for launch, acceptable shortly after**: without it a modified client can claim Premium and bypass the daily like cap. Smallest version that closes the gap: a RevenueCat **webhook receiver** (`POST /api/webhooks/revenuecat/`, verify the `Authorization` header against a shared secret) that upserts `user_id → is_premium, expires_at` from `INITIAL_PURCHASE` / `RENEWAL` / `CANCELLATION` / `EXPIRATION` events (RevenueCat's `app_user_id` is our `USER_ID`, set via `Purchases.logIn`), plus `is_premium` echoed on `GET /api/profile/` so the app can reconcile. The like-cap check itself stays client-side for v1; this just gives us a server record to audit against and to gate §Y #2 on later. Yosef will send you the webhook URL/secret from the RevenueCat dashboard once the app is configured there.
+**Done 2026-10-16 (backend #189, #190):** `POST /api/webhooks/revenuecat/` (Authorization header must equal `REVENUECAT_WEBHOOK_SECRET`; deliberately 404 while unset because DO's edge rewrites origin 5xx), migration 031 `billing_subscriptions`, and `IS_PREMIUM` / `PREMIUM_EXPIRES_AT` on `GET /api/profile/`. **Remaining is ops:** Yosef creates the webhook in RevenueCat and hands you the secret (see the answers block at the top). The daily like-cap stays client-side for v1 as agreed; #2/#3 below are the post-launch follow-ups that gate on `IS_PREMIUM`.
 
 **Original context (2026-09-23):** A frontend-only subscription audit this week found the Premium paywall's copy promised "unlimited swiping," but the code never actually delivered it — the "unlock more cards" button just rewound the same already-loaded 10-card deck, not a bigger or fresh one. That's been fixed on our side: the paywall now promises (and actually enforces) a **higher daily LIKE cap only** — 2/day free, 5/day Premium (`constants/config.ts`'s `DAILY_LIKE_LIMITS`, plus a new `lib/dailyLikeLimit.ts` persistent counter so it can't be reset by tapping "review again"). Nothing in this fix needs anything from you — flagging this section only for the *next* step, which does.
 
@@ -147,25 +91,11 @@ Nothing here is a redesign. Every item is a small, well-located change; file:lin
 
 ---
 
-## §AB — Launch-readiness: remote config endpoint + https email links 🟠 Medium priority (new section, 2026-09-26 — for Nico)
+## §AB — Launch-readiness: ✅ remote config done; https email links = ops (updated 2026-10-16)
 
 Two small backend asks that unlock things the frontend has already built (branch `feat/launch-readiness`). Neither blocks App Review; both are the difference between "we can react to a bad launch" and "we can't."
 
-### 1. `GET /api/app-config/` — the break-glass endpoint
-
-**Why:** OTA updates ship JS fixes, but they can't tell an old native build "you're too old for this backend," and they can't switch a broken feature off in the minutes after you notice it. The app now checks this endpoint at boot and each time it returns to the foreground (throttled to once per 5 min) and honors the answer. **It is fail-open by design** — a 404 (today), a timeout, or garbage means "no restrictions," and the last good response is cached on-device — so shipping the app before this endpoint exists is safe, and a bug in this endpoint can never lock users out.
-
-**Contract** (unauthenticated — it must work on the sign-in screen and for logged-out users):
-```
-GET /api/app-config/
-200 { "min_version": "1.0.0", "maintenance_message": null, "flags": { } }
-```
-- `min_version` (string, dotted numeric): builds **below** this show a blocking "Update required" screen linking to the App Store. Compared numerically (`1.2.10` > `1.2.9`). `null`/`""` = no minimum. Compared against `app.json`'s `version`, **not** the build number.
-- `maintenance_message` (string|null): non-empty → the app shows this message instead of itself (incident/maintenance). `null`/`""` = normal.
-- `flags` (object of booleans): server-controlled kill switches / gradual rollouts. The frontend reads them via `useRemoteFlag(name, default)`; an absent key uses the caller's default, so adding a flag here never changes behavior until the app asks for it. Nothing reads any flag yet.
-
-**Implementation notes:** a tiny read-only view backed by settings/env (e.g. `APP_MIN_VERSION`, `APP_MAINTENANCE_MESSAGE`) is enough for v1 — being able to change it from the DO dashboard without a deploy is the point. Serve with `Cache-Control: public, max-age=60` (it's hit by every client on every foreground). Keep it dependency-free — no DB, no auth — so it stays up when the rest of the API doesn't; that's exactly when it's needed.
-**Acceptance:** `curl https://<api>/api/app-config/` → 200 JSON of the shape above. Setting `min_version` above the shipped app version makes the app show the update screen on next foreground.
+### 1. ~~`GET /api/app-config/`~~ — **done 2026-10-16** (backend #186/#188; live in prod, `{"min_version": null, "maintenance_message": null, "flags": {}}`, env `APP_MIN_VERSION` / `APP_MAINTENANCE_MESSAGE` / `APP_FLAGS`, `Cache-Control: max-age=60`). The app's `lib/appConfig.ts` already consumes it.
 
 ### 2. Transactional-email links: use `https://` (supersedes §X #1's `backchannelv2://` default)
 
@@ -189,22 +119,18 @@ The frontend now supports **universal links** (site PR: `BackChannel-Netlify` #2
 
 ---
 
-## §AD — Moderation & account-safety gaps found while writing the ops runbooks 🔴 High priority for launch (new section, 2026-09-26 — for Nico)
+## §AD — Moderation & account-safety gaps 🟠 Medium (section trimmed 2026-10-15; was 🔴)
 
-Found by reading the code while writing `docs/ops/MODERATION_RUNBOOK.md` / `INCIDENT_PLAN.md` (frontend repo). Nothing was run against a live system, so treat each as "verify, then fix." They matter because App Review (1.2) and the published Privacy Policy make promises these gaps quietly break.
+**Done and live in prod (removed):** #1 alert email now carries reporter/reported names, detail, and conversation id, with `queue_url` built from the API host (#159, new `API_BASE_URL` setting); #3 report evidence is snapshotted (≤200 messages of the reported conversation) and `moderation.reports` survives account purge (#165, migration 030) — the Privacy Policy §7 sentence is now true; #4 reporting withdraws active referrals between the pair (#164); #5a token refresh rejects deactivated accounts (#162, `ActiveUserTokenRefreshView`); #5c SSO login already checked `is_active`; #7 `/api/health/ready/` no longer echoes exception text (#160).
 
-1. **The moderation alert pipe is probably dead today.** `MODERATION_ALERT_EMAIL` defaults to `""` (report is stored, nobody alerted) and `backchannel.app` has no MX record (mail to `support@` bounces). Also: the alert email carries only ids + reason (no names, detail text, or conversation id), and its `queue_url` is built from `FRONTEND_URL` (the Netlify marketing site), so the link is wrong. **Ask:** set the env var, include reporter/reported names + detail + conversation id, and build `queue_url` from the API/admin host. (Extends §W #4.)
-2. **Moderation tooling is JSON-only.** `GET /admin/api/reports/` + a resolve endpoint (which can deactivate the user) exist, but there's no HTML reports page (resolving needs a devtools `fetch` with a CSRF header) and `django.contrib.admin` isn't installed. There is deactivate/reactivate, but no *ban*: a deactivated user can re-register with a new email (trivial with Apple Hide My Email). **Ask (minimal):** a simple HTML reports queue with a "resolve + deactivate" button; consider blocking re-registration by SSO subject / device.
-3. **Deleting an account destroys moderation evidence.** `queries/purge.py` deletes `moderation.reports` rows where the user is reporter, reported, or resolver, plus all messages/conversations for both sides. A reported user can delete their account and erase the report and the thread. The Privacy Policy (§7) says report records are kept after deletion where necessary; the code doesn't do that. **Ask:** retain (or anonymize-but-keep) reports and the reported conversation on purge. This also makes the policy sentence true.
-4. **Policy says reporting withdraws pending referrals; code doesn't.** `report_user` withdraws likes, matches, and conversations only. **Ask:** also withdraw pending referrals between the two users, or soften the policy sentence.
-5. **Deactivation gaps to verify with a throwaway account:** (a) refresh uses the stock `TokenRefreshView`, so a deactivated user's refresh token still works; (b) `ws_auth.py` has no `is_active` check that we could find, so a deactivated user may keep sending over an open chat socket; (c) the SSO login path wasn't traced. **Ask:** check `is_active` on refresh + socket connect + SSO login.
-6. **CSAM / NCMEC.** No automated image scanning, photos are public-read on the CDN (§V #2), and no login IPs are stored (little to include in a report). Counsel should confirm the reporting duty, process, and evidence-preservation period **before launch**.
-7. **Health endpoints.** `/api/health/` is static (doesn't touch the DB); `/api/health/ready/` checks Postgres + Redis but is public and returns raw exception text on failure. **Ask:** don't leak exception text publicly; point uptime monitors at `/ready/`.
-8. **No global push kill switch** and no documented Sentry alert rules / uptime monitors (see `docs/ops/INCIDENT_PLAN.md` for suggested ones).
-9. **Data export vs. Privacy Policy (`docs/ops/DATA_RIGHTS_SPEC.md`):** Policy §3 says we don't collect phone/DOB/street/postal code, but those columns still exist (§L). An honest "download my data" export would contradict the policy, so land the §L cleanup first.
-10. **Lifecycle messaging (`docs/ops/LIFECYCLE_MESSAGING.md`) needs backend that doesn't exist:** a scheduler, `last_active_at`, and a user timezone (`last_login` is not "last active"), plus a new `reminders` notification type with its own toggle and an unsubscribe endpoint. The Privacy Policy discloses only transactional email; lifecycle email needs a policy update first. Not launch-blocking.
+1. **Moderation tooling is JSON-only.** `GET /admin/api/reports/` (rows now include `EVIDENCE`) + a resolve endpoint exist, but there's no HTML reports page (resolving needs a devtools `fetch` with a CSRF header) and `django.contrib.admin` isn't installed. There is deactivate/reactivate, but no *ban*: a deactivated user can re-register with a new email (trivial with Apple Hide My Email). **Ask (minimal):** a simple HTML reports queue with a "resolve + deactivate" button; consider blocking re-registration by SSO subject / device.
+2. **Open chat sockets aren't force-closed on deactivation.** Mostly mitigated 2026-10-16: sends from a deactivated account now 403 even over an open socket, and deactivation bumps `token_version` so any reconnect fails. Left: actively closing the open socket. Low priority.
+3. **CSAM / NCMEC.** No automated image scanning, photos are public-read on the CDN (§V #2), and no login IPs are stored (little to include in a report). Counsel should confirm the reporting duty, process, and evidence-preservation period **before launch**.
+4. **No global push kill switch** and no documented Sentry alert rules / uptime monitors (see `docs/ops/INCIDENT_PLAN.md` for suggested ones).
+5. **Data export vs. Privacy Policy (`docs/ops/DATA_RIGHTS_SPEC.md`):** Policy §3 says we don't collect phone/DOB/street/postal code, but those columns still exist (§L). An honest "download my data" export would contradict the policy, so land the §L cleanup first.
+6. **Lifecycle messaging (`docs/ops/LIFECYCLE_MESSAGING.md`) needs backend that doesn't exist:** a scheduler, `last_active_at`, and a user timezone (`last_login` is not "last active"), plus a new `reminders` notification type with its own toggle and an unsubscribe endpoint. The Privacy Policy discloses only transactional email; lifecycle email needs a policy update first. Not launch-blocking.
 
-**Fix order:** 1 → 3 → 5 → 2 → 4 → 7 → 6 (counsel, in parallel) → rest.
+**Fix order:** 1 → 2 → 3 (counsel, in parallel) → rest.
 
 ---
 
@@ -249,92 +175,37 @@ Then tell us — we'll flip `FRONTEND_URL` (and confirm on our side with a real 
 
 **Not urgent for launch** — the Netlify host covers this until you're ready.
 
-### 2. Support email — `support@backchannel.app` currently bounces
+### 2. Support email — ✅ resolved 2026-10-16; two small follow-ups
 
-Every "contact us" surface in the app and on both websites (the in-app Help & Feedback button, the App Store review notes, the Privacy Policy, the moderation-report acknowledgment) points at `support@backchannel.app`. **That domain has no MX record**, so mail sent to it is undeliverable today — silently, from the sender's point of view (no bounce notice most of the time, it just vanishes).
+`support@backchannel.it.com` is a Google Workspace alias on `backchannel.it.com` (MX live) that forwards to Yosef and Nico. The app, both websites, the App Store review notes, and the ops runbooks all point at it now. `backchannel.app` has no mail and never will; ignore the half-created Workspace under that domain.
 
-**This is separate from, and in addition to, the `MODERATION_ALERT_EMAIL` gap in §AD #1** (that one is about *us* getting notified when a report comes in; this one is about *users* being able to reach us at all, e.g. "I paid and lost Premium access," account issues, or general questions).
-
-**Ask:** pick which domain support mail should actually live on — `backchannel.app`, `backchannel.it.com`, or something else — and get an MX record pointed at a real inbox (Google Workspace, a forwarding rule, whatever's simplest). Once that's decided, tell us if the address itself needs to change from `support@backchannel.app` — it's a single constant (`constants/config.ts`'s `SUPPORT_EMAIL`) on our side, a one-line change.
-
-**Heads-up (2026-10-05):** a Google Workspace account for `backchannel.app` already exists, half set up, under Yosef's login (domain not yet verified, no MX added). If you go with `backchannel.app`, finish *that* account rather than starting a new signup — Google otherwise blocks with "this domain is already in use." Yosef can add you as an admin. Also, while you're in DNS: `backchannel.app` has **no SPF or DKIM either**, so whatever domain `DEFAULT_FROM_EMAIL` uses in prod needs the SMTP provider's (Resend's) SPF/DKIM records and a `_dmarc` TXT, or verification/reset mail will keep drifting into spam.
-
-**This blocks launch** in the sense that App Review may test the support contact, and it's a bad first impression for a real user's first support request to vanish into the void.
+**Left (ops):** set `SUPPORT_EMAIL`, `MODERATION_ALERT_EMAIL` and `DEFAULT_FROM_EMAIL` (`BackChannel <noreply@backchannel.it.com>`) in the DO prod env, and add Google's **SPF + DKIM** TXT records for `backchannel.it.com` in DO DNS (only MX and a `p=none` DMARC exist today), so verification/reset mail from that domain isn't flagged as spam.
 
 ---
 
-## §V — Pre-production security audit: backend-owned findings 🔴 High priority (new section — separate from §S/§B/§L/§F, tracked here for Nico)
+## §V — Pre-production security audit: what's left 🟢 Low (section trimmed 2026-10-16; was 🔴)
 
-**Status (2026-09-18):** a read-only security sweep across both repos, done ahead of App Store submission. Three parallel reviews (mobile frontend, Django backend, repo/CI hygiene) traced every ID-taking endpoint, the raw-SQL query layer, auth/session handling, file storage, and dependency freshness. **Overall backend grade: B.** The important context up front, so this doesn't read as "the backend is insecure" — it isn't:
+**Done and live in prod** (backend PRs #167–#175, #196, #197, #199; removed from this list): #1 pre-match PII; #3 dependency bumps incl. Django 5.2 LTS, `pip-audit` enforcing in CI; #4 admin throttle on trusted-edge IP, fails closed; #6 Django password validators at register/reset/change; #7 server-side session revocation via `users.token_version` (migration 032) + dedicated `JWT_SIGNING_KEY`; #8 waitlist throttle 10/h/IP; #9 `sponsor_email` dropped from `/api/matches/`; #10 `seed_demo_data` refuses on prod, hardcoded password removed; #11 request-sponsor throttle 20/h/user; #12 WebSocket JWT via `Sec-WebSocket-Protocol` (app switched); CI gating, Dependabot, loopback-only compose Redis. The reviewer's original framing still holds: no IDOR, parameterized SQL, bcrypt — the audit was about over-sharing, and that's now closed.
 
-> The reviewer specifically could **not** find an authorization (IDOR) hole anywhere traced — messaging checks participation on send/history/unmatch and the WebSocket consumer re-checks on connect, referrals/check-ins verify sponsor-or-applicant, every sponsor job mutation is scoped `WHERE JOB_ID = %s AND SPONSOR_ID = %s` plus a service-layer check, and profile updates are self-only. The raw SQL in `queries/` is parameterized throughout — every dynamic fragment is a placeholder, an `int()`-cast limit, or a hardcoded column whitelist. Passwords are bcrypt-hashed with a per-password salt; action tokens (reset/verify) are opaque, single-use, and hashed at rest. This is the stuff that actually gets apps breached, and it's done right.
+### Still open
 
-**What's actually wrong is over-sharing data you already hold, not broken access control.** Findings below, grouped by severity, each with file:line from the current backend checkout.
+2. **Profile photos are still `ACL="public-read"` with permanent CDN URLs.** Résumé photos moved to private + 1-hour presigned URLs (#175); ordinary profile photos didn't. The Privacy Policy currently discloses the public-link CDN honestly, so this is not launch-blocking; when it ships, tell us and we tighten the policy wording. *Can't verify from the repo:* whether the DO Spaces bucket allows listing — worth a manual check.
 
-### High
+5. **Registration enumeration — decision: keep as-is for launch** (see the answers block at the top). Revisit post-launch; if we switch to the generic response, we'll coordinate the signup copy first.
 
-1. **Sponsor feed returns applicants' phone number, DOB, and full parsed résumé before any match.** `bc_microservices/queries/profiles.py:225-231` selects `PHONE_NUMBER`, `DATE_OF_BIRTH`, and `RESUME_DATA::TEXT` into `GET /api/profiles/pack/` (`services/profiles.py:316-357`, `views_profiles.py:186-191`). Authorization on that endpoint is only "you own this job" — and anyone can self-register as a Sponsor via `/api/register-sponsor/` with no work-email verification required to post a job. That combination lets anyone page the entire applicant pool and harvest phone + DOB + résumé contents at will. **Ask:** drop those three columns from `fetch_profile_pack`; surface contact info only after a mutual match (the app already has a match state to gate on). **Update 2026-09-22 → launch-blocking:** the published Privacy Policy now states the résumé is shared only after a match — see §W #1.
+### Low / Info (unchanged)
 
-2. **Uploaded images are `ACL="public-read"` with no expiry — including résumé photos.** `bc_microservices/services/storage.py:45-51` writes images public-read and returns a permanent CDN URL; documents are correctly `ACL="private"` (`:72-78`). `services/documents.py:316-325` explicitly routes "a photo of a resume" down the *image* path, so it inherits the public-read behavior. A `get_presigned_url` helper already exists (`storage.py:134`) but nothing calls it. **Ask:** make image objects private and serve all user uploads (photos included) through short-lived presigned URLs, matching what documents already do. *Can't verify from the repo:* whether the DO Spaces bucket policy also allows listing — worth a manual check in the DO console.
-
-3. **Django and three libraries are past their security-support window.** `requirements.txt:7` pins Django `5.1.7` (5.1.x's extended support window has closed; 5.2 is current LTS). Also stale: `requests==2.32.3` (2.32.4 fixed a netrc credential-leak CVE), `urllib3==2.3.0` (2.5.0 fixed redirect-handling issues), `djangorestframework-simplejwt==5.2.2` (predates the fix for tokens-remain-valid-for-deactivated-users, CVE-2024-22513). **Ask:** bump requests/urllib3/simplejwt now — all drop-in, no code changes expected — and schedule the Django 5.2 LTS upgrade before launch. No venv is set up in the local checkout to run `pip-audit` directly; worth adding as a CI step (see the CI/process items below) rather than a one-off local run.
-
-### Medium
-
-4. **Admin-login throttle keys on a spoofable header and fails open.** `bc_microservices/views_admin.py:24-37` reads the first `X-Forwarded-For` entry for its 10-attempt brute-force window; an attacker can set a fresh header per request and never trip it, and a cache error disables the throttle entirely rather than blocking. The regular API throttles already do this correctly via the trusted edge-IP header (`throttles.py:52-67`). **Ask:** reuse `_RealIPMixin`'s header order in the admin view; fail closed on cache errors.
-
-5. **Registration reveals whether an email is already registered.** `services/auth.py:127-130` returns `"Email already in use"` on conflict, while login (`:280`), forgot-password (`:300`), and resend (`:506`) are all correctly generic. Registration is throttled 10/hour/IP, which limits but doesn't eliminate email enumeration. **Ask:** return a generic "check your email" response and resolve the actual conflict server-side / over email.
-
-6. **Django's password validators are configured but never invoked.** `settings.py:199-212` lists `CommonPasswordValidator` etc., but the custom auth path (`services/auth.py:125-126`, `constants.py:27`) only checks length ≥ 8 — `"password1"` passes today. **Ask:** call `django.contrib.auth.password_validation.validate_password` in registration, reset, and change-password.
-
-7. **Password change doesn't invalidate other sessions; JWTs are signed with `SECRET_KEY`.** `services/auth.py:369-377` only blacklists the *presented* refresh token and clears one cache key — access tokens live 1 day (`settings.py:123`) and every other device's refresh token stays valid after a password reset, so a stolen session survives the victim "fixing" it. Separately, `SIGNING_KEY = SECRET_KEY` (`settings.py:128`) means a leaked Django secret key is full account takeover across every user, not just a Django-internal risk. **Ask:** add a `token_version` (or `password_changed_at`) claim checked in `custom_jwt.py:25` so a password change kills all outstanding tokens; move to a dedicated `JWT_SIGNING_KEY` distinct from `SECRET_KEY`.
-
-8. **Unauthenticated, unthrottled email sender.** `views_landing.py:132-163` (`join_waitlist`) emails any submitted address with no rate limit — a script can mail-bomb third parties from your sending domain and burn deliverability/sender reputation. **Ask:** add the existing `_AnonIPThrottle` base class, same pattern already used elsewhere.
-
-9. **Sponsor's personal login email is returned to every matched applicant.** `queries/matches.py:139` selects `u.EMAIL AS sponsor_email` into `GET /api/matches/`. Nothing in the product surfaces or needs this. **Ask:** drop the column from the query.
-
-10. **`seed_demo_data` has no environment guard and a hardcoded password.** `management/commands/seed_demo_data.py:26` (`DEMO_PASSWORD = "DemoPass123!"`) and `handle()` (`:1107`) runs against whatever database it's pointed at, with no `--execute`/prod check — contrast `seed_personas.py` (dry-run by default, random per-account passwords via `secrets.token_urlsafe`) and `purge_users.py` (properly gated). If this was ever pointed at prod, that's ~20 accounts with a publicly-known password sitting in the production database today. **Ask:** add a guard refusing to run when the environment is prod; as a one-time check, query prod for any `@demo.backchannel.app` accounts and remove them if found.
-
-11. **Unthrottled notification fan-out.** `views_jobs.py:446-449` (`request_sponsor`) has no throttle class and background-notifies every sponsor at a company (`services/jobs.py:1140-1180`); it's idempotent per (user, job) but not rate-limited across jobs, so iterating job IDs can spam a company's sponsors. **Ask:** add a `_UserThrottle` scope, same pattern as the other write endpoints.
-
-12. **Chat access token accepted via WebSocket URL query string — needs a coordinated frontend change.** The consumer authenticates from `?token=`, and the app currently connects with `${WS_BASE_URL}/ws/chat/${id}/?token=${accessToken}` (frontend: `components/MessagesView.tsx:549, 728`). Full JWTs in URLs land in load-balancer/proxy access logs in ways headers don't, and a logged token is a session-takeover risk. **Ask:** support accepting the token via the `Sec-WebSocket-Protocol` header (or issue a short-lived, single-use socket ticket via a small new endpoint) so the frontend can stop putting it in the URL — this needs to ship on your side first since the frontend can't switch until the backend accepts the new mechanism.
-
-### Low / Info
-
-- **OpenAPI spec + Scalar docs are public** (`django_bc/urls.py:78-86, 122-123`) — not a vulnerability, but it hands anyone your full endpoint map. Consider gating behind admin auth in prod.
-- **`ALLOWED_HOSTS` defaults to `localhost,127.0.0.1`** (`settings.py:46-49`) — fails safe, but confirm it's actually set in the DO app config, or every prod request 400s.
-- **Emails logged at INFO** (`services/email.py:36, 74, 91, 151, 168`) — addresses land in container logs. No tokens, passwords, or message bodies were found logged anywhere.
-- **Sentry `traces_sample_rate=1.0`** (`settings.py:550`) — a cost concern, not security; `send_default_pii=False` is already set correctly.
-- **Legacy JWT dual-read still enabled** — `ACTION_TOKEN_DUAL_READ` defaults true (`settings.py:63-64`); the migration window this supported is long past. Flip to false and delete `_verify_email_legacy`/`_reset_password_legacy` (`services/auth.py:335, 485`).
-- **Logo.dev token embedded in returned/stored URLs** (`services/logos.py:86`) — almost certainly a publishable key already (§ elsewhere in this doc discusses the same key), but worth a one-line confirmation.
-
-### Repo / CI / process (same audit, backend-repo-owned)
-
-- **`.github/workflows/integration.yml:15-61`** runs on `pull_request` into `main` and passes `ADMIN_EMAIL` / `ADMIN_PASSWORD` / `TEST_BYPASS_SECRET` into a 732-line shell script checked out from the PR branch head. Fork PRs don't receive secrets (GitHub's default), so this isn't a classic pwn-request, but any same-repo branch PR — including from a compromised contributor account — executes arbitrary shell with the dev admin password in its environment. **Ask:** gate the job behind a GitHub Environment with required reviewers (or switch to `workflow_dispatch`); confirm `ADMIN_PASSWORD` is scoped to the dev deployment only (it appears to be) and rotate it periodically regardless.
-- **No dependency or secret scanning configured** — no Dependabot, no CodeQL, no `pip-audit` step anywhere in CI. This is the same gap that let an old frontend API key sit unrotated in git history (see the frontend repo's own audit trail) — worth closing on both repos, not just this one. **Ask:** enable Dependabot for the `pip` and `github-actions` ecosystems on this repo; add a `pip-audit -r requirements.txt` step to `unit.yml`.
-- **Dev Redis published on `0.0.0.0` with no password** — `docker-compose.yml:3-10` maps `"6379:6379"` with no `requirepass`; Docker publishes to all interfaces by default, so on a shared network anyone can reach the dev cache. Local-dev only, no prod exposure. **Ask:** bind `127.0.0.1:6379:6379` or drop the port mapping entirely (the `web` service already reaches it over the compose network).
-
-**Ask, in leverage order:** (1) strip phone/DOB/résumé from the sponsor feed query — smallest change, largest exposure closed; (2) make image uploads private + presigned; (3) bump requests/urllib3/simplejwt now, plan the Django 5.2 move; (4) the medium hardening items (5–11) as time allows, roughly in the order listed; (5) the WebSocket token mechanism (#12) whenever it's convenient to coordinate — the frontend is already aware and waiting on this side.
-
-**Frontend status:** the frontend-owned findings from the same audit (WebView URL whitelisting, unchecked `Linking.openURL` on other users' URLs, iOS privacy manifest, a few logging/config items) were fixed directly in the frontend repo and aren't tracked here. The only two items above that need frontend coordination are #12 (WebSocket token) and, longer-term, moving password-reset/email-verification links from the `backchannelv2://` custom scheme to real Universal Links — not urgent, noted for whenever backend has bandwidth to emit `https://` links instead.
+- **OpenAPI spec + Scalar docs are public** (`django_bc/urls.py`) — consider gating behind admin auth in prod.
+- **`ALLOWED_HOSTS` defaults to `localhost,127.0.0.1`** — fails safe; confirm it's set in the DO app config.
+- **Emails logged at INFO** — addresses land in container logs; no secrets found logged.
+- **Sentry `traces_sample_rate=1.0`** — cost, not security.
+- **Legacy JWT dual-read still enabled** — `ACTION_TOKEN_DUAL_READ` defaults true; the migration window is long past. Flip to false and delete the `_legacy` readers.
+- **Logo.dev token embedded in returned/stored URLs** — almost certainly a publishable key; worth a one-line confirmation.
+- **`?token=` WebSocket fallback** — remove once app build 1.0.2 is the floor (we'll say when).
 
 ---
 
-## §S — SSO sign-in (Apple + Google) ✅ Both sides built — remaining: credentials/env config + deploy
-
-**Status (2026-08-07): backend SHIPPED both endpoints** (their PR #152, `feat/sso-apple-google` → `develop`, commit `04c2bea`, with a frontend handoff at their `docs/FRONTEND_SSO_HANDOFF_2026-08-04.md`) — `POST /api/auth/sso/`, `POST /api/auth/complete-onboarding/`, migration 029 (`user_sso_identities` + nullable `password_hash`), password-gated flows returning 400 for passwordless accounts, and Apple revoke-on-delete. The frontend (branch `feature/sso-apple-google`) is wired to the **implemented** contract, verified against their actual `services/sso.py` rather than the proposal: `has_password` handling + "Set a Password" UX, Apple `authorization_code` forwarded on every sign-in, capitalized `role` values, and `register-sponsor`-matching sponsor field conversions (an earlier note here guessed those were free-text strings — wrong; booleans + `"yes"`/`"no"`, matching what `createProfile()` already sends).
-
-**Remaining launch checklist (nothing left to code on either side):**
-
-1. **Backend/ops:** merge `develop` → `main` and deploy — SSO is live on dev (`https://backchannel-dev-hl72i.ondigitalocean.app`, returns 503-per-provider until creds are set) but **not on production**.
-2. **Admin (Apple): ✅ done (2026-08-08)** — the Sign in with Apple `.p8` key exists (key ID `96LV7XHDB4`, in the admin's local Downloads, deliver to backend via a private channel — never commit it), and `app.json` has `usesAppleSignIn: true` so EAS manages the App ID capability + entitlement at build time. Remaining is only the handoff: backend env vars `APPLE_BUNDLE_ID` + `APPLE_TEAM_ID` (`ZWFR8LC25W`) / `APPLE_KEY_ID` / `APPLE_PRIVATE_KEY` — and the key trio is only for revoke-on-delete, so Apple sign-in itself can go live with just the bundle ID set.
-3. **Admin (Google):** create iOS/Android/Web OAuth client IDs in Google Cloud Console. Feeds backend `GOOGLE_OAUTH_CLIENT_IDS` (comma-separated, web ID is the token `aud`) and the frontend `EXPO_PUBLIC_GOOGLE_*_CLIENT_ID` env vars; the iOS ID's reversed form also goes into app.json's google-signin plugin as `iosUrlScheme`.
-4. **Frontend:** set the env vars from #3, then EAS build (native modules + entitlement must ship in a real build; the config plugin `plugins/withGoogleSigninModularHeaders.js` already handles the Podfile patch on every prebuild). ~~Flip `SSO_ENABLED = true`~~ — **done 2026-08-19**, committed on `main`; the next build ships with SSO buttons rendering, so sequence the backend deploy (#1) before or alongside that build. **Unlike everything else in this doc, this one isn't "ships whenever backend catches up" — the Google client IDs are baked into the native binary at build time, so a build submitted before they exist will never gain working Google Sign-In on its own. If Apple approves a build before this step, a *new* build (and a fresh App Store submission/review) is required specifically to add Google Sign-In — Apple Sign-In (item 2) doesn't have this problem, since it only needs backend env vars.**
-5. **E2E test against dev first** — their handoff's §5 has the recipe; test users land in `BACKCHANNEL_DEV`, never prod.
-
----
-
-## §F — Feed relevance: signup answers barely shape the decks 🔴 High priority (core product — sponsored jobs unscored, sponsor deck unscoped)
+## §F — Feed relevance: ✅ scoring + scoping shipped; one SQL item + a flag flip left (updated 2026-10-16)
 
 **Status (2026-09-18):** traced end-to-end against the local backend checkout after a founder question ("if someone says they want to be a software engineer, do we show them those roles?"). Short answer: only weakly, and not for the part of the product that matters. Nothing is wrong on the frontend side — it sends no filters and renders server order — so this is entirely a backend item.
 
@@ -350,27 +221,11 @@ Every "contact us" surface in the app and on both websites (the in-app Help & Fe
 **Collected but read by no feed/matching query** (distinct from §L — these should be *wired in*, not dropped): applicant `INDUSTRY`, `RANGE_MILES`, `WILLING_TO_RELOCATE`, `REQUIRES_SPONSORSHIP`, `INSIGHTS`, `RESUME_DATA`; sponsor `COMPANIES_CAN_REFER_TO`, `JOB_TITLE`, `REFERRAL_ELIGIBLE`, `OPEN_TO_REFERRALS`. `COMPANIES_CAN_REFER_TO` is the notable one — it's the field that most directly encodes which jobs a sponsor can actually refer into, and nothing reads it (`services/profiles.py:237, 318` write/display only). Sponsor `COMPANY` is the only sponsor field that shapes any query, and only for their own job-browse tab (`services/jobs.py:800`).
 
 **Ask (in leverage order):**
-1. **Score `spn_raw` too** — pass the sponsored pool through the same `services/scoring.py` path at `services/jobs.py:574-584` before interleaving. Smallest change, fixes the half of the deck that's currently random.
-2. **Scope the sponsor deck to the job** — add title/skills/location predicates to `fetch_profile_pack` from `queries/jobs.py:248 get_job_scoring_criteria`, so sponsors see candidates for the role they sponsored, not the whole table. (`docs/ARCHITECTURE.md:465`'s "finite pool" note still applies — scoping shrinks the pool further, so pair with the replenishment redesign it describes.)
-3. **Filter in SQL, not just re-sort in Python** — push at least skills/title predicates into the applicant pack `WHERE` (or widen the oversample) so a good fit isn't lost to the random-30 window.
-4. **Emit `relevance_score` consistently.** `docs/API_REFERENCE.md:694, 708` documents a 0–1 score on pack cards; jobs never emit it (`services/jobs.py:615`) and profiles emit 0–100 (`profiles.py:337`), and `docs/FRONTEND_WIRING_GUIDE.md:643` says the opposite. Pick one contract — the app renders a "YOUR FIT — N% match" badge from `relevanceScore` (`types/jobs.ts:369`, `components/home/JobCardContent.tsx:119`), so today that badge is either absent or a client-side skill-overlap figure, not the server's ranking.
+**Done 2026-10-16:** #1 sponsored jobs ranked by the same scorer (backend #194); #4 `relevance_score` (0–100 float) on every job card when the applicant has a profile, omitted otherwise — the app already renders it; #2 sponsor-deck scoping to the job (backend #195) behind `FEED_SCOPE_SPONSOR_DECK`, **currently OFF in prod**.
 
-**Frontend status:** nothing to change for #1–#3 — the app renders whatever order the server returns and the "YOUR FIT" plate already computes skill overlap locally (`components/home/plates/plateContent.ts:477`). If #4 settles on the server emitting a 0–100 score for jobs, the frontend should drop the local overlap fallback and display the server value. One open question worth answering on-device before then: what the "YOUR FIT — N%" badge actually shows a user right now.
-
----
-
-## §B — `GET /api/profile/` doesn't return `BIO` — bio can't round-trip 🟠 Medium priority (silent user-visible data loss)
-
-**Status (2026-08-09):** needs a one-line confirmation against the live API, then (if confirmed) a small serializer fix.
-
-**What the frontend observes:** `PATCH /api/profile/update/` accepts and stores `bio` (sponsor onboarding and the profile editor both save through it successfully), but the profile the app reads back via `GET /api/profile/` does not appear to include a `BIO` field — the frontend's response type declares it (`lib/auth-api.ts`) and the store maps it (`stores/useUserProfileStore.ts` → `professional.summary`), but a long-standing code comment there says the field never actually arrives, and the mapping only works today because it falls back to the locally cached value.
-
-**User-visible consequence if confirmed:** the bio survives only in on-device AsyncStorage. Any fresh context — logout → login, reinstall, new device — shows an empty bio even though the server has one stored. The user then either re-types it or (worse) assumes the app lost their data. Photo does NOT have this problem (`PHOTO_URL` round-trips fine); bio is the only affected field found in the 2026-08-09 end-to-end profile-pipeline audit.
-
-**Ask:**
-1. Confirm whether the `GET /api/profile/` serializer includes `BIO` for both roles.
-2. If missing, add it (same casing convention as the response's other columns, e.g. `PHOTO_URL`).
-3. No frontend change needed afterward — the mapping (`summary: profile.BIO || existing…`) is already in place and will simply start receiving real data.
+**Left:**
+1. **Flip `FEED_SCOPE_SPONSOR_DECK` on in prod** once you're comfortable with it on dev (no response-shape change; the deck tops up from the unfiltered pool so it's never empty).
+2. **Filter in SQL, not just re-sort in Python** (original #3) — push at least skills/title predicates into the applicant job-pack query so the candidate window isn't a random slice. Post-launch.
 
 ---
 
@@ -400,39 +255,3 @@ Every "contact us" surface in the app and on both websites (the in-app Help & Fe
 **Frontend status:** both the UI (address editor, phone input — confirmed no editor exists anywhere in the app) and the outgoing payload for these four fields are fully removed. Nothing pending on the frontend side for this item.
 
 ---
-
-# 🆕 New Features — Backend Support Needed
-
-> This section tracks backend work for entirely new product features proposed during the post-launch UX audit and its 5-phase improvement plan (safety/relief → pipeline visibility → retention → match-to-referral funnel → agency/growth). **§N1** (report/block, Phase 4) and **§N2** (referral check-in stage, Phase 5) both shipped — see the backend's `KNOWN_ISSUES.md` "Recently fixed" for details. Remaining entries below are the phases that needed no backend work at all.
-
-## UX Plan Phase 6 — Retention: no backend work needed
-
-The original 5-phase plan assumed Phase 6 (daily-deck reminder, referral check-in nudges, unfinished-deck reminder) would need backend-scheduled push (cron + push payloads). On implementation, all three turned out to be fully solvable **client-side**, so there's no backend ticket here:
-
-- **Daily deck reminder** — scheduled as an on-device **local** notification (`expo-notifications`' `DAILY` trigger type, not a server push) for 9am local time, right after push permission is confirmed granted. See `lib/localNotifications.ts`. The app already caches the applicant/sponsor deck per calendar day (`HomeView.tsx`'s `isSameDay` check), so a fixed local time is a safe bet that a fresh deck exists by then — no server round-trip needed to know that.
-- **Unfinished-deck reminder** — a one-time local notification scheduled when the app backgrounds with cards still left in today's deck (`MainApp.tsx`'s `AppState` listener), canceled the moment the app returns to the foreground.
-- **Referral check-in nudge** — an in-app banner on the Matches screen (not a push at all) surfacing referrals stuck at "Referred" for 7+ days, computed entirely from the already-fetched referrals list. See the `staleReferrals` memo in `MatchesView.tsx`.
-
-Worth revisiting if a *server-triggered* push turns out to be wanted later (e.g. to reach users who've disabled the app's local-notification permission specifically but still have push enabled some other way — an edge case, since both share the same OS permission today).
-
----
-
-## UX Plan Phase 7 — Match-to-referral funnel: no backend work needed (one design constraint discovered)
-
-All three Phase 7 items (conversation starters, in-thread referral prompt, sponsor cold-start fix) shipped client-only. One real constraint surfaced while building the cold-start fix, worth recording:
-
-- **Conversation starters** and **in-thread referral prompt** are pure client logic — templated openers built from data already on the conversation object (`MessagesView.tsx`'s `getConversationStarters`), and a message-count-based nudge toward the existing Refer button (`sponsorReferralPromptEligible`). No new endpoints.
-- **Sponsor cold-start fix** — originally planned to show "We found N open roles at {company}" **during** the company question, mid-questionnaire. That's not possible with the current auth model: `GET /api/jobs/browse/` and `GET /api/ats/organizations/` (§G) both require auth, and a sponsor isn't registered until the *last* question of the questionnaire — there's no token yet, and no saved `sponsor_profiles.COMPANY` for the browse endpoint's server-side filter to key off of. Moved the role-picker to run **immediately after registration** instead (`SponsorQuestionnaire.tsx`, right after `setAuthTokens`), which is the earliest point it's actually possible — the practical outcome (exit onboarding with a live deck) is unchanged.
-- The role-picker's `sponsorJob()` call uses a simplified insights payload (`insiderInsights` only, one optional text field) rather than the full 4-field wizard (`dayToDay`/`teamCulture`/`idealCandidate`/`insiderInsights`) the Jobs tab's sponsor flow collects. This is a **known quality tradeoff**, not a backend gap — sponsors can enrich the role's insights later from the Jobs tab. Flagging in case product wants the onboarding version to collect the same depth (would mean porting more of `JobsView.tsx`'s sponsor-flow UI into onboarding).
-
----
-
-## UX Plan Phase 8 — Agency & growth
-
-Phase 8's applicant job browse (**8.1**) is merged to main — `components/ApplicantJobsBrowseView.tsx`, reachable from the Jobs tab (no longer sponsor-only); its backend question (**§R**) shipped 2026-07-21 and is wired frontend-side. The share-a-job item (8.2) was descoped by product.
-
-- **8.3 — Sponsor-request follow-through** — the "N employees notified" message a sponsor-request returns is never persisted server-side, so (same shape as §N2's check-in-stage gap) it's mirrored client-side (`utils/sponsorRequestCache.ts`) and shown later on the Waitlisted-job detail in `MatchesView.tsx`, plus a "Nudge again" button that re-sends the request once a waitlisted job has gone 5+ days without being picked up. This is a client-only local mirror with the same limitation as §N2 — it only reflects what THIS device requested, not a durable record. No backend ticket filed for this one since the existing `request-sponsor` endpoint already supports being called again (re-notifying), which is all "nudge again" needs.
-
----
-
-*(Further entries for later UX-plan phases — agency/growth — will be appended here as those phases are implemented.)*

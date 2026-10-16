@@ -473,7 +473,8 @@ export async function fetchJobsPack(): Promise<JobApiResponse[]> {
     total_count: number;
   }>("/api/jobs/pack/");
   // Jobs are ranked by relevance_score (skills 40%, experience 20%, role 20%, location 10%, recency 10%)
-  // New fields: relevance_score (float 0-1), REQUIREMENTS_SUMMARY (string|null), CORE_RESPONSIBILITIES (string|null)
+  // relevance_score is a 0-100 float on every card (ATS and sponsored) when the applicant
+  // has a profile, and omitted otherwise. Also: REQUIREMENTS_SUMMARY, CORE_RESPONSIBILITIES (string|null)
   return response.jobs;
 }
 
@@ -959,7 +960,6 @@ export async function getMatches(): Promise<{
     SPONSOR_JOB_TITLE: string | null;
     SPONSOR_COMPANY: string | null;
     sponsor_username?: string;
-    sponsor_email?: string;
   }>;
   profile_matches?: Array<{
     LIKE_ID: string;
@@ -975,7 +975,6 @@ export async function getMatches(): Promise<{
     SPONSOR_JOB_TITLE: string | null;
     SPONSOR_COMPANY: string | null;
     sponsor_username?: string;
-    sponsor_email?: string;
   }>;
   total_count?: number;
 }> {
@@ -1832,10 +1831,18 @@ export async function changeEmail(
 export async function changePassword(
   oldPassword: string,
   newPassword: string,
-): Promise<{ message: string }> {
+  refreshToken?: string | null,
+): Promise<{
+  message: string;
+  // A password change revokes every session for the user, including this
+  // one; the backend mints a replacement so the caller can stay signed in.
+  access_token?: string;
+  refresh_token?: string;
+}> {
   return api.post("/api/profile/change-password/", {
     old_password: oldPassword,
     new_password: newPassword,
+    ...(refreshToken ? { refresh_token: refreshToken } : {}),
   });
 }
 
