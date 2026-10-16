@@ -21,11 +21,11 @@
 
 ## §W — App Store submission: what's still open after the 2026-10-13 batch 🟠 Ops + confirmations (section trimmed 2026-10-15)
 
-**Done and live in prod (removed from this list):** #1 pre-match PII stripped from `GET /api/profiles/pack/` (backend #157, SQL-inspection + response tests); #3 SSO step-up re-auth on `POST /api/account/delete/` accepting `{provider, identity_token, refresh_token?}` exactly as the app sends it (#158; 403 if the token belongs to another account, 503 if the provider is down); #5 `Reply-To: SUPPORT_EMAIL` on every outbound mail (#159, env `SUPPORT_EMAIL`, default `support@backchannel.app`); #6 purge covers `user_info.device_tokens`; #7 notification prefs gate the push, not just the feed row. #2 is now tracked only under §V #2 / #9.
+**Done and live in prod (removed from this list):** #1 pre-match PII stripped from `GET /api/profiles/pack/` (backend #157, SQL-inspection + response tests); #3 SSO step-up re-auth on `POST /api/account/delete/` accepting `{provider, identity_token, refresh_token?}` exactly as the app sends it (#158; 403 if the token belongs to another account, 503 if the provider is down); #5 `Reply-To: SUPPORT_EMAIL` on every outbound mail (#159, env `SUPPORT_EMAIL`, default `support@backchannel.it.com`); #6 purge covers `user_info.device_tokens`; #7 notification prefs gate the push, not just the feed row. #2 is now tracked only under §V #2 / #9.
 
 ### 🟠 Ops (no code)
 
-4. **`MODERATION_ALERT_EMAIL` must be set in the DO prod env.** The code side is done (#159: richer alerts, correct `queue_url`, and a prod-only startup warning when it's unset) — but the warning is all that happens until the variable exists. Set it to `support@backchannel.app` once that address receives mail (§AE #2).
+4. **`MODERATION_ALERT_EMAIL` must be set in the DO prod env.** The code side is done (#159: richer alerts, correct `queue_url`, and a prod-only startup warning when it's unset) — but the warning is all that happens until the variable exists. Set it to `support@backchannel.it.com` once that address receives mail (§AE #2).
 
 ### 🟢 Confirmations (no code expected, just a yes/no)
 
@@ -178,13 +178,13 @@ Then tell us — we'll flip `FRONTEND_URL` (and confirm on our side with a real 
 
 **Not urgent for launch** — the Netlify host covers this until you're ready.
 
-### 2. Support email — `support@backchannel.app` currently bounces
+### 2. Support email — `support@backchannel.it.com` currently bounces
 
-Every "contact us" surface in the app and on both websites (the in-app Help & Feedback button, the App Store review notes, the Privacy Policy, the moderation-report acknowledgment) points at `support@backchannel.app`. **That domain has no MX record**, so mail sent to it is undeliverable today — silently, from the sender's point of view (no bounce notice most of the time, it just vanishes).
+Every "contact us" surface in the app and on both websites (the in-app Help & Feedback button, the App Store review notes, the Privacy Policy, the moderation-report acknowledgment) points at `support@backchannel.it.com`. **That domain has no MX record**, so mail sent to it is undeliverable today — silently, from the sender's point of view (no bounce notice most of the time, it just vanishes).
 
 **This is separate from, and in addition to, the `MODERATION_ALERT_EMAIL` gap in §AD #1** (that one is about *us* getting notified when a report comes in; this one is about *users* being able to reach us at all, e.g. "I paid and lost Premium access," account issues, or general questions).
 
-**Ask:** pick which domain support mail should actually live on — `backchannel.app`, `backchannel.it.com`, or something else — and get an MX record pointed at a real inbox (Google Workspace, a forwarding rule, whatever's simplest). Once that's decided, tell us if the address itself needs to change from `support@backchannel.app` — it's a single constant (`constants/config.ts`'s `SUPPORT_EMAIL`) on our side, a one-line change.
+**Ask:** pick which domain support mail should actually live on — `backchannel.app`, `backchannel.it.com`, or something else — and get an MX record pointed at a real inbox (Google Workspace, a forwarding rule, whatever's simplest). Once that's decided, tell us if the address itself needs to change from `support@backchannel.it.com` — it's a single constant (`constants/config.ts`'s `SUPPORT_EMAIL`) on our side, a one-line change.
 
 **Heads-up (2026-10-05):** a Google Workspace account for `backchannel.app` already exists, half set up, under Yosef's login (domain not yet verified, no MX added). If you go with `backchannel.app`, finish *that* account rather than starting a new signup — Google otherwise blocks with "this domain is already in use." Yosef can add you as an admin. Also, while you're in DNS: `backchannel.app` has **no SPF or DKIM either**, so whatever domain `DEFAULT_FROM_EMAIL` uses in prod needs the SMTP provider's (Resend's) SPF/DKIM records and a `_dmarc` TXT, or verification/reset mail will keep drifting into spam.
 

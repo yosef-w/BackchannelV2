@@ -8,7 +8,7 @@
 
 ## §AC — "Download my data" endpoint 🟠 Medium priority (for Nico; needed before scale, not before App Review)
 
-**Why:** account deletion exists (`POST /api/account/delete/`); access/portability does not. The policy (Section 10, "Access") currently promises a copy **by emailing support**, and `support@backchannel.app` has **no MX today** (§W #4), so today that promise cannot be honoured at all. CCPA gives residents a right to know/access and to portability, and GDPR Articles 15 and 20 do the same for anyone in the EU/UK. Statutory response windows are roughly 45 days (CCPA, extendable once) and one month (GDPR), **counsel to confirm**; a self-serve export makes that a non-issue, and it is a support-cost saver.
+**Why:** account deletion exists (`POST /api/account/delete/`); access/portability does not. The policy (Section 10, "Access") currently promises a copy **by emailing support**, and `support@backchannel.it.com` has **no MX today** (§W #4), so today that promise cannot be honoured at all. CCPA gives residents a right to know/access and to portability, and GDPR Articles 15 and 20 do the same for anyone in the EU/UK. Statutory response windows are roughly 45 days (CCPA, extendable once) and one month (GDPR), **counsel to confirm**; a self-serve export makes that a non-issue, and it is a support-cost saver.
 
 ### Ask
 
@@ -42,14 +42,14 @@
    files/photo-<name>            the profile photo
    ```
    UTF-8, ISO-8601 UTC timestamps, JSONB/VARIANT columns emitted as native JSON (not stringified). Field names = the DB column names lower-cased, so the output is diff-able against `docs/schemas`.
-5. **Delivery:** in-app download after readiness, plus a **notification-only email** to the account email ("Your BackChannel data export is ready. Open BackChannel > Profile > Privacy & Security > Download my data. It's available for 7 days. If you didn't request this, change your password now and contact support@backchannel.app"). A second, immediate email on **request** ("We got a request to export your data...") is the tripwire that tells a real owner their account is being pulled. **Do not put a download link in the email:** email is not a secure channel, and Apple "Hide My Email" relay addresses (`@privaterelay.appleid.com`) do not reliably deliver until the sending domain is registered with Apple (§W #3 ops note). Also send an in-app notification row (`type` new: `data_export`), which respects `notification_preferences`.
+5. **Delivery:** in-app download after readiness, plus a **notification-only email** to the account email ("Your BackChannel data export is ready. Open BackChannel > Profile > Privacy & Security > Download my data. It's available for 7 days. If you didn't request this, change your password now and contact support@backchannel.it.com"). A second, immediate email on **request** ("We got a request to export your data...") is the tripwire that tells a real owner their account is being pulled. **Do not put a download link in the email:** email is not a secure channel, and Apple "Hide My Email" relay addresses (`@privaterelay.appleid.com`) do not reliably deliver until the sending domain is registered with Apple (§W #3 ops note). Also send an in-app notification row (`type` new: `data_export`), which respects `notification_preferences`.
 6. **Storage and retention:**
    - Write the zip to a **private** prefix in Spaces (`exports/<user_id>/<request_id>.zip`), **never** the public-read image path (§V #2 shows public objects stay public forever). Presigned GET only, 10-minute expiry, `Content-Disposition: attachment`.
    - **Zip expires after 7 days:** a scheduled sweep (or Spaces lifecycle rule) deletes it and sets `status = EXPIRED`. It is re-generable on request.
    - `user_info.data_requests(request_id PK, user_id, status, requested_at, ready_at, expires_at, size_bytes, auth_method, requested_ip?)`: a compliance log so we can prove we responded. Keep the row **2 years** (counsel to confirm the period), pseudonymised on account deletion (null the `user_id`, keep a one-way hash) so the log does not contradict the delete promise.
    - **The account-deletion purge must remove export objects.** Add `exports/<user_id>/` to `queries/purge.py::get_user_file_paths` and `user_info.data_requests` to `PURGE_STEPS` (or the pseudonymisation step). Otherwise Policy Section 9 ("permanently delete ... from our systems") is false for the export copy.
 7. **Size caps:** generation must stream tables per user with `WHERE user_id = ...` only (no full-table scans); cap message export at, say, 50k messages and files at 50 MB total (state the cap in the README; counsel to confirm truncation is acceptable) so one heavy account cannot exhaust a worker.
-8. **Verification for the locked-out / deactivated:** deactivated or password-lost users cannot use the in-app row. Keep a **manual path** at `support@backchannel.app` (needs MX) where support verifies control of the account email and runs the same export by an admin script. Document it; do not add a public unauthenticated endpoint.
+8. **Verification for the locked-out / deactivated:** deactivated or password-lost users cannot use the in-app row. Keep a **manual path** at `support@backchannel.it.com` (needs MX) where support verifies control of the account email and runs the same export by an admin script. Document it; do not add a public unauthenticated endpoint.
 
 ### Exactly what goes in (per table, real columns)
 
@@ -103,7 +103,7 @@ Everything keyed to `user_id` in `queries/purge.py::PURGE_STEPS` is in scope; th
 - **Flow:** tap > confirm sheet explaining the contents and that other people's information is excluded > re-auth (password field, or the Apple/Google verify button reusing the `deleteAccountWithSso` pattern in `lib/auth-api.ts`) > `POST` > status view ("Preparing... we'll notify you") > when `READY`, `GET /download/` > open the share sheet on the file (expo-file-system + expo-sharing, or a `Linking` open of the presigned URL) > "Available for 7 days" and a "Request again" affordance after expiry.
 - **States:** pending (poll on foreground, back-off), failed (retry), rate-limited (show the `retry_after`), expired.
 - **Analytics** (new events; add to `lib/analytics/mixpanel.ts`, never include the file contents or ids of others): `Data Export Requested`, `Data Export Ready`, `Data Export Downloaded`, `Data Export Failed { reason }`.
-- **Copy for the fallback** (until the endpoint ships, and for locked-out users): "Email support@backchannel.app from your account email and we'll send your data within 30 days." Only honest once MX exists.
+- **Copy for the fallback** (until the endpoint ships, and for locked-out users): "Email support@backchannel.it.com from your account email and we'll send your data within 30 days." Only honest once MX exists.
 
 ---
 

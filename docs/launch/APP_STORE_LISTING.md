@@ -141,9 +141,9 @@ The first version of BackChannel.
 - Sign in with Apple or email
 - Report and unmatch tools, with every report reviewed by a person
 
-We're a small team and we read every message: support@backchannel.app
+We're a small team and we read every message: support@backchannel.it.com
 ```
-**[CONFIRM]** `support@backchannel.app` is live. `docs/BACKEND_CHANGES_NEEDED.md` says MX for that domain had not been set up as of 2026-09-22. Do not publish it until a test mail is received. Otherwise use a mailbox that works.
+**[CONFIRM]** `support@backchannel.it.com` is live. `docs/BACKEND_CHANGES_NEEDED.md` says MX for that domain had not been set up as of 2026-09-22. Do not publish it until a test mail is received. Otherwise use a mailbox that works.
 
 ---
 
@@ -230,7 +230,7 @@ REPORTING AND BLOCKING (Guideline 1.2)
 Users accept the Terms at signup (linked under the sign-up form). There is no separate stand-alone "block" button: reporting blocks the reported person for the reporter, and unmatching ends an existing match. Either one stops all further contact.
 
 MODERATION
-Every report is emailed to our moderation inbox, where a person reviews it and acts on it promptly (removal of content and/or account, and the reporter is already protected from further contact the moment they report). Contact: support@backchannel.app. [CONFIRM before submitting: backend MODERATION_ALERT_EMAIL is set in production and support@backchannel.app receives mail, per docs/BACKEND_CHANGES_NEEDED.md §W #4–5.]
+Every report is emailed to our moderation inbox, where a person reviews it and acts on it promptly (removal of content and/or account, and the reporter is already protected from further contact the moment they report). Contact: support@backchannel.it.com. [CONFIRM before submitting: backend MODERATION_ALERT_EMAIL is set in production and support@backchannel.it.com receives mail, per docs/BACKEND_CHANGES_NEEDED.md §W #4–5.]
 
 ACCOUNT DELETION (Guideline 5.1.1(v))
 Account > Privacy & Security > Delete Account. This removes the account and its data, including for accounts created with Apple / Hide My Email. Backend support for Apple/Google re-authentication on delete is live in production as of 2026-10-13 (backend PR #158).
@@ -247,7 +247,7 @@ Photos (profile picture, résumé upload), and notifications (check-in reminders
 Contact for questions during review: Yosef Wolday, yosefwolday@yahoo.com (phone in the App Review Information fields).
 ```
 
-Decisions taken 2026-10-03: demo pair is Sarah Chen / Emily Rodriguez (the only seeded pair with a match, thread, and referral); the moderation promise is "promptly," not "within 24 hours" (keep `docs/ops/MODERATION_RUNBOOK.md`'s 24h target as the internal goal; tighten the public wording later without a review); ship without a stand-alone Block action and add one only if a reviewer asks. Remaining [CONFIRM] items depend on the backend (§W #3 SSO deletion, §W #4–5 moderation email and MX, Apple private-relay domain registration). The phone number goes only in App Store Connect's required App Review Information fields (not public); switch the contact email to support@backchannel.app once it receives mail.
+Decisions taken 2026-10-03: demo pair is Sarah Chen / Emily Rodriguez (the only seeded pair with a match, thread, and referral); the moderation promise is "promptly," not "within 24 hours" (keep `docs/ops/MODERATION_RUNBOOK.md`'s 24h target as the internal goal; tighten the public wording later without a review); ship without a stand-alone Block action and add one only if a reviewer asks. Remaining [CONFIRM] items depend on the backend (§W #3 SSO deletion, §W #4–5 moderation email and MX, Apple private-relay domain registration). The phone number goes only in App Store Connect's required App Review Information fields (not public); switch the contact email to support@backchannel.it.com once it receives mail.
 
 ---
 

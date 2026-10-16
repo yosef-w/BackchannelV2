@@ -234,9 +234,9 @@ Channels (pick in order of reach): (1) in-app `maintenance_message` (when §AB i
 > BackChannel is briefly down for maintenance. Your matches and messages are safe. Please try again in a few minutes.
 
 **Data incident (only after counsel approves):**
-> We are writing to tell you about a security incident affecting some BackChannel accounts. What happened: {}. What information was involved: {}. What we are doing: {}. What you can do: {}. Contact: support@backchannel.app. (Counsel to confirm required content and delivery per state law.)
+> We are writing to tell you about a security incident affecting some BackChannel accounts. What happened: {}. What information was involved: {}. What we are doing: {}. What you can do: {}. Contact: support@backchannel.it.com. (Counsel to confirm required content and delivery per state law.)
 
-**Support inbox reality:** `support@backchannel.app` has no MX today (§W #4). During an incident, mail to it bounces; fix MX before launch or list a working contact.
+**Support inbox reality:** `support@backchannel.it.com` has no MX today (§W #4). During an incident, mail to it bounces; fix MX before launch or list a working contact.
 
 ---
 
