@@ -202,6 +202,10 @@ export interface RawEducationRow {
 export interface ProfileResponse {
   USER_ID?: string;
   IS_SPONSOR?: boolean;
+  /** Server-side entitlement from the RevenueCat webhook (audit record;
+   *  the app's premium state still comes from the RevenueCat SDK). */
+  IS_PREMIUM?: boolean;
+  PREMIUM_EXPIRES_AT?: string | null;
   FIRST_NAME?: string | null;
   LAST_NAME?: string | null;
   EMAIL?: string | null;
