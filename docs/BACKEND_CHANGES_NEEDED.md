@@ -1,14 +1,11 @@
 # Backend Changes Needed
 
-**Last updated:** 2026-10-16 (second reconciliation, against backend PRs #167–#200 + `docs/FRONTEND_HANDOFF_2026-10-16_PRELAUNCH.md`, all live in prod: §X #2, §Y #1, §AB #1, §F #1/#2/#4, §V #3/#4/#6/#7/#8/#9/#10/#11/#12 and the CI items are DONE and removed; our answers to Nico's open questions are in the block below)
+**Last updated:** 2026-10-16 — reconciled against both October backend batches (PRs #157–#200, all live in prod). Everything shipped is removed; only open items remain. History of what shipped lives in git and the backend's `docs/FRONTEND_HANDOFF_2026-10-16_PRELAUNCH.md`.
 
-**Earlier:** 2026-10-15 (reconciled against Nico's 2026-10-13 batch, backend PRs #157–#165, verified live in production: §W #1/#3/#5/#6/#7, §AD #1/#3/#4/#5a/#5c/#7, §V #1, §B and §S are DONE and removed; §W #2 folded into §V #2/#9; what's left in §W/§AD is ops config + the smaller items)
-
-**Previous update:** 2026-09-27 (added **§AE** — pulled the `backchannel.it.com` universal-link checklist and the support-email domain decision out into their own section addressed to Nico specifically, so they don't get missed; added **§Y** — real "unlimited" premium deck volume, not urgent, queued behind PREMIUM_ENABLED and server-side entitlement verification; added **§X** — two ready-to-apply fixes, written up instead of pushed as a branch: transactional-email deep-linking + résumé-parse timeout race)
 **Frontend repo:** `BackchannelV2`
 **Backend repo:** `Backchannel-backend/BackChannel-backend`
 
-> **Open items (2026-10-16):** **Ops, launch-blocking** — `MODERATION_ALERT_EMAIL` and `REVENUECAT_WEBHOOK_SECRET` in the DO prod env (§W #4, §Y #1), MX/SPF/DKIM on the support domain (§AE #2, Yosef), confirm prod `FRONTEND_URL` (§AB #2). **§AE #1** AASA on `backchannel.it.com`. **§V** — only #2 (profile photos still public; résumé photos done) and #5 (answered below: keep as-is) remain, plus the Low/Info list. **§F #3** SQL-side filtering + flipping `FEED_SCOPE_SPONSOR_DECK` in prod. **§AD** #1/#2/#3/#4/#5/#6. **§X #1 / §AB #2** are the same ops item. **§Y #2/#3, §Z, §AC, §AA, §L** post-launch.
+> **Open items (2026-10-16):** **Ops, launch-blocking (values emailed to Nico 2026-10-16)** — `REVENUECAT_WEBHOOK_SECRET`, `SUPPORT_EMAIL` + `MODERATION_ALERT_EMAIL` = `support@backchannel.it.com`, `DEFAULT_FROM_EMAIL` on `backchannel.it.com` in the DO prod env (§W #4, §Y #1), SPF/DKIM TXT records for `backchannel.it.com` in DO DNS (§AE #2; the mailbox itself exists now), confirm prod `FRONTEND_URL` (§AB #2). **§AE #1** AASA on `backchannel.it.com`. **§V** — only #2 (profile photos still public; résumé photos done) and #5 (answered below: keep as-is) remain, plus the Low/Info list. **§F #3** SQL-side filtering + flipping `FEED_SCOPE_SPONSOR_DECK` in prod. **§AD** #1/#2/#3/#4/#5/#6. **§X #1 / §AB #2** are the same ops item. **§Y #2/#3, §Z, §AC, §AA, §L** post-launch.
 >
 > **Answers to the questions in your 2026-10-16 handoff (so you're unblocked):**
 > 1. **§V #5 registration enumeration — keep as-is for launch.** The explicit "email already in use" is better UX for a cold-start product, registration is already throttled 10/h/IP, and App Review doesn't require the generic response. Revisit post-launch.
@@ -25,7 +22,7 @@
 
 ### 🟠 Ops (no code)
 
-4. **`MODERATION_ALERT_EMAIL` must be set in the DO prod env.** The code side is done (#159: richer alerts, correct `queue_url`, and a prod-only startup warning when it's unset) — but the warning is all that happens until the variable exists. Set it to `support@backchannel.it.com` once that address receives mail (§AE #2).
+4. **`MODERATION_ALERT_EMAIL` must be set in the DO prod env.** The code side is done (#159: richer alerts, correct `queue_url`, and a prod-only startup warning when it's unset) — but the warning is all that happens until the variable exists. Value: `support@backchannel.it.com` (emailed 2026-10-16).
 
 ### 🟢 Confirmations (no code expected, just a yes/no)
 
@@ -178,17 +175,11 @@ Then tell us — we'll flip `FRONTEND_URL` (and confirm on our side with a real 
 
 **Not urgent for launch** — the Netlify host covers this until you're ready.
 
-### 2. Support email — `support@backchannel.it.com` currently bounces
+### 2. Support email — ✅ resolved 2026-10-16; two small follow-ups
 
-Every "contact us" surface in the app and on both websites (the in-app Help & Feedback button, the App Store review notes, the Privacy Policy, the moderation-report acknowledgment) points at `support@backchannel.it.com`. **That domain has no MX record**, so mail sent to it is undeliverable today — silently, from the sender's point of view (no bounce notice most of the time, it just vanishes).
+`support@backchannel.it.com` is a Google Workspace alias on `backchannel.it.com` (MX live) that forwards to Yosef and Nico. The app, both websites, the App Store review notes, and the ops runbooks all point at it now. `backchannel.app` has no mail and never will; ignore the half-created Workspace under that domain.
 
-**This is separate from, and in addition to, the `MODERATION_ALERT_EMAIL` gap in §AD #1** (that one is about *us* getting notified when a report comes in; this one is about *users* being able to reach us at all, e.g. "I paid and lost Premium access," account issues, or general questions).
-
-**Ask:** pick which domain support mail should actually live on — `backchannel.app`, `backchannel.it.com`, or something else — and get an MX record pointed at a real inbox (Google Workspace, a forwarding rule, whatever's simplest). Once that's decided, tell us if the address itself needs to change from `support@backchannel.it.com` — it's a single constant (`constants/config.ts`'s `SUPPORT_EMAIL`) on our side, a one-line change.
-
-**Heads-up (2026-10-05):** a Google Workspace account for `backchannel.app` already exists, half set up, under Yosef's login (domain not yet verified, no MX added). If you go with `backchannel.app`, finish *that* account rather than starting a new signup — Google otherwise blocks with "this domain is already in use." Yosef can add you as an admin. Also, while you're in DNS: `backchannel.app` has **no SPF or DKIM either**, so whatever domain `DEFAULT_FROM_EMAIL` uses in prod needs the SMTP provider's (Resend's) SPF/DKIM records and a `_dmarc` TXT, or verification/reset mail will keep drifting into spam.
-
-**This blocks launch** in the sense that App Review may test the support contact, and it's a bad first impression for a real user's first support request to vanish into the void.
+**Left (ops):** set `SUPPORT_EMAIL`, `MODERATION_ALERT_EMAIL` and `DEFAULT_FROM_EMAIL` (`BackChannel <noreply@backchannel.it.com>`) in the DO prod env, and add Google's **SPF + DKIM** TXT records for `backchannel.it.com` in DO DNS (only MX and a `p=none` DMARC exist today), so verification/reset mail from that domain isn't flagged as spam.
 
 ---
 
@@ -264,39 +255,3 @@ Every "contact us" surface in the app and on both websites (the in-app Help & Fe
 **Frontend status:** both the UI (address editor, phone input — confirmed no editor exists anywhere in the app) and the outgoing payload for these four fields are fully removed. Nothing pending on the frontend side for this item.
 
 ---
-
-# 🆕 New Features — Backend Support Needed
-
-> This section tracks backend work for entirely new product features proposed during the post-launch UX audit and its 5-phase improvement plan (safety/relief → pipeline visibility → retention → match-to-referral funnel → agency/growth). **§N1** (report/block, Phase 4) and **§N2** (referral check-in stage, Phase 5) both shipped — see the backend's `KNOWN_ISSUES.md` "Recently fixed" for details. Remaining entries below are the phases that needed no backend work at all.
-
-## UX Plan Phase 6 — Retention: no backend work needed
-
-The original 5-phase plan assumed Phase 6 (daily-deck reminder, referral check-in nudges, unfinished-deck reminder) would need backend-scheduled push (cron + push payloads). On implementation, all three turned out to be fully solvable **client-side**, so there's no backend ticket here:
-
-- **Daily deck reminder** — scheduled as an on-device **local** notification (`expo-notifications`' `DAILY` trigger type, not a server push) for 9am local time, right after push permission is confirmed granted. See `lib/localNotifications.ts`. The app already caches the applicant/sponsor deck per calendar day (`HomeView.tsx`'s `isSameDay` check), so a fixed local time is a safe bet that a fresh deck exists by then — no server round-trip needed to know that.
-- **Unfinished-deck reminder** — a one-time local notification scheduled when the app backgrounds with cards still left in today's deck (`MainApp.tsx`'s `AppState` listener), canceled the moment the app returns to the foreground.
-- **Referral check-in nudge** — an in-app banner on the Matches screen (not a push at all) surfacing referrals stuck at "Referred" for 7+ days, computed entirely from the already-fetched referrals list. See the `staleReferrals` memo in `MatchesView.tsx`.
-
-Worth revisiting if a *server-triggered* push turns out to be wanted later (e.g. to reach users who've disabled the app's local-notification permission specifically but still have push enabled some other way — an edge case, since both share the same OS permission today).
-
----
-
-## UX Plan Phase 7 — Match-to-referral funnel: no backend work needed (one design constraint discovered)
-
-All three Phase 7 items (conversation starters, in-thread referral prompt, sponsor cold-start fix) shipped client-only. One real constraint surfaced while building the cold-start fix, worth recording:
-
-- **Conversation starters** and **in-thread referral prompt** are pure client logic — templated openers built from data already on the conversation object (`MessagesView.tsx`'s `getConversationStarters`), and a message-count-based nudge toward the existing Refer button (`sponsorReferralPromptEligible`). No new endpoints.
-- **Sponsor cold-start fix** — originally planned to show "We found N open roles at {company}" **during** the company question, mid-questionnaire. That's not possible with the current auth model: `GET /api/jobs/browse/` and `GET /api/ats/organizations/` (§G) both require auth, and a sponsor isn't registered until the *last* question of the questionnaire — there's no token yet, and no saved `sponsor_profiles.COMPANY` for the browse endpoint's server-side filter to key off of. Moved the role-picker to run **immediately after registration** instead (`SponsorQuestionnaire.tsx`, right after `setAuthTokens`), which is the earliest point it's actually possible — the practical outcome (exit onboarding with a live deck) is unchanged.
-- The role-picker's `sponsorJob()` call uses a simplified insights payload (`insiderInsights` only, one optional text field) rather than the full 4-field wizard (`dayToDay`/`teamCulture`/`idealCandidate`/`insiderInsights`) the Jobs tab's sponsor flow collects. This is a **known quality tradeoff**, not a backend gap — sponsors can enrich the role's insights later from the Jobs tab. Flagging in case product wants the onboarding version to collect the same depth (would mean porting more of `JobsView.tsx`'s sponsor-flow UI into onboarding).
-
----
-
-## UX Plan Phase 8 — Agency & growth
-
-Phase 8's applicant job browse (**8.1**) is merged to main — `components/ApplicantJobsBrowseView.tsx`, reachable from the Jobs tab (no longer sponsor-only); its backend question (**§R**) shipped 2026-07-21 and is wired frontend-side. The share-a-job item (8.2) was descoped by product.
-
-- **8.3 — Sponsor-request follow-through** — the "N employees notified" message a sponsor-request returns is never persisted server-side, so (same shape as §N2's check-in-stage gap) it's mirrored client-side (`utils/sponsorRequestCache.ts`) and shown later on the Waitlisted-job detail in `MatchesView.tsx`, plus a "Nudge again" button that re-sends the request once a waitlisted job has gone 5+ days without being picked up. This is a client-only local mirror with the same limitation as §N2 — it only reflects what THIS device requested, not a durable record. No backend ticket filed for this one since the existing `request-sponsor` endpoint already supports being called again (re-notifying), which is all "nudge again" needs.
-
----
-
-*(Further entries for later UX-plan phases — agency/growth — will be appended here as those phases are implemented.)*
