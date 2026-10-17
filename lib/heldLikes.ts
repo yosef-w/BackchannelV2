@@ -33,6 +33,18 @@ type Role = "applicant" | "sponsor";
 
 const STORAGE_KEY = (role: Role) => `@bc/heldLikes_${role}`;
 
+/**
+ * Both roles' held likes — per device, so logout must wipe them: left
+ * behind, the next account's paywall would offer to send THIS account's
+ * held likes, from the wrong account.
+ */
+export async function clearHeldLikes(): Promise<void> {
+  await AsyncStorage.multiRemove([
+    STORAGE_KEY("applicant"),
+    STORAGE_KEY("sponsor"),
+  ]).catch(() => {});
+}
+
 function todayKey(): string {
   const now = new Date();
   return `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;

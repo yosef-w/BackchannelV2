@@ -12,7 +12,8 @@
 // product speak, instead of re-breaking the world every 23 seconds.
 
 import * as Haptics from 'expo-haptics';
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useRouteFocused } from '@/lib/useRouteFocused';
 import { StyleSheet, View, type TextStyle } from 'react-native';
 import Animated, {
   cancelAnimation,
@@ -49,6 +50,11 @@ export const win = (t: number, a: number, b: number): number => {
   return (t - a) / (b - a);
 };
 
+// ── Route focus ─────────────────────────────────────────────────────────
+// Lives in lib/ (shared with the rest of the pushed-not-replaced funnel);
+// re-exported here so the films keep a single engine import.
+export { useRouteFocused };
+
 // ── Master clock ────────────────────────────────────────────────────────
 
 export interface CinemaClock {
@@ -57,6 +63,11 @@ export interface CinemaClock {
   breath: SharedValue<number>;
   /** Marching dash offset for the backchannel line (-240 over 16s). */
   march: SharedValue<number>;
+  /**
+   * Whether the film's route is on screen — UI-thread readable, so
+   * useCinemaHaptics can be gated on it. False while sign-up sits on top.
+   */
+  focused: SharedValue<boolean>;
   /** Tap-to-advance: hard-cut to the next act boundary. */
   advance: () => void;
 }
@@ -85,6 +96,19 @@ export function useCinemaClock(
   // immediately when this is true (see IntroCinema/SponsorCinema); this
   // hook additionally just never bothers starting the pointless animation.
   const reduceMotion = useReducedMotion();
+  // The films live on /intro, which the funnel pushes over and swipes back
+  // to — never replaces — so this component outlives its time on screen:
+  // it stays mounted under sign-up for the whole questionnaire. The clock
+  // only runs while the route is actually focused; a blurred film's
+  // withRepeat(-1) loop would otherwise keep going underneath whatever got
+  // pushed on top, firing haptic beats every ~16s from a screen nobody can
+  // see (the "idle buzzing after Continue with Apple" bug).
+  const isFocused = useRouteFocused();
+  const focused = useSharedValue(isFocused);
+  const playedRef = useRef(false);
+  useEffect(() => {
+    focused.value = isFocused;
+  }, [focused, isFocused]);
 
   const run = useCallback(
     (from: number) => {
@@ -111,8 +135,12 @@ export function useCinemaClock(
   );
 
   useEffect(() => {
-    if (reduceMotion) return;
-    run(0);
+    if (reduceMotion || !isFocused) return;
+    // First focus plays the full reel. A return visit (swipe-back from
+    // sign-up/sign-in) picks the solution loop back up instead of
+    // re-breaking the world — the story was already resolved once.
+    run(playedRef.current ? loopStart : 0);
+    playedRef.current = true;
     march.value = withRepeat(
       withTiming(-240, { duration: 16000, easing: Easing.linear }),
       -1,
@@ -124,12 +152,14 @@ export function useCinemaClock(
       ),
       -1,
     );
+    // Runs on blur as well as unmount: a cancelled master stops changing,
+    // so the haptic reaction below has nothing to fire on.
     return () => {
       cancelAnimation(master);
       cancelAnimation(march);
       cancelAnimation(breath);
     };
-  }, [run, master, march, breath, reduceMotion]);
+  }, [run, master, march, breath, reduceMotion, isFocused, loopStart]);
 
   const advance = useCallback(() => {
     // Reading .value from JS is a one-off snapshot — fine outside worklets.
@@ -138,7 +168,7 @@ export function useCinemaClock(
     if (next !== undefined && next < 0.999) run(next);
   }, [boundaries, run, master]);
 
-  return { master, breath, march, advance };
+  return { master, breath, march, focused, advance };
 }
 
 // ── Haptic beats ────────────────────────────────────────────────────────
@@ -173,13 +203,23 @@ function fireBeat(kind: CinemaBeatKind): void {
   }
 }
 
+/**
+ * @param gate  optional: beats are swallowed while this is false. The
+ *              looping films pass their clock's `focused` as a second line
+ *              of defence behind useCinemaClock's own focus gate — a
+ *              blurred film must never buzz even if its clock were somehow
+ *              still ticking. One-shot pops (ConfirmPop, BroadcastMoment,
+ *              PremiumCelebration) run ~1s and unmount, so they pass none.
+ */
 export function useCinemaHaptics(
   master: SharedValue<number>,
   beats: readonly CinemaBeat[],
+  gate?: SharedValue<boolean>,
 ): void {
   useAnimatedReaction(
     () => master.value,
     (curr, prev) => {
+      if (gate && !gate.value) return; // off-screen — silent
       if (prev === null || curr <= prev) return; // first frame / loop rewind
       if (curr - prev > 0.02) return; // tap-advance jump — stay silent
       for (const beat of beats) {

@@ -44,6 +44,7 @@ import {
   easeOut,
   useCinemaClock,
   useCinemaHaptics,
+  useRouteFocused,
   win,
 } from '@/components/cinema/engine';
 import {
@@ -120,25 +121,35 @@ export function SponsorCinema({
   onSignIn,
   onBack,
 }: SponsorCinemaProps) {
-  const { master, breath, march, advance } = useCinemaClock(
+  const { master, breath, march, focused, advance } = useCinemaClock(
     TOTAL_MS,
     LOOP_START,
     ACT_STARTS,
   );
-  useCinemaHaptics(master, BEATS);
+  useCinemaHaptics(master, BEATS, focused);
   const reduceMotion = useReducedMotion();
+  const isFocused = useRouteFocused();
 
-  // Watch-time analytics: one dismissal event, whichever exit is taken.
-  const mountedAt = useRef(Date.now());
+  // Watch-time analytics: one dismissal event per visit, whichever exit is
+  // taken.
+  const watchStartedAt = useRef(Date.now());
   // Same guard as IntroCinema's dismiss — none of the exits disable
   // themselves, so a fast double-tap (or Skip immediately followed by the
   // CTA) could independently fire onContinue()/onSignIn()/onBack() twice,
   // stacking a duplicate screen on the nav stack.
   const dismissedRef = useRef(false);
+  // Re-armed on every focus, same as IntroCinema: /intro is pushed over,
+  // not replaced, so a swipe-back lands on this same still-mounted
+  // instance and the guard would otherwise swallow every tap.
+  useEffect(() => {
+    if (!isFocused) return;
+    dismissedRef.current = false;
+    watchStartedAt.current = Date.now();
+  }, [isFocused]);
   const dismiss = (action: 'skip' | 'cta' | 'sign_in' | 'back') => {
     if (dismissedRef.current) return;
     dismissedRef.current = true;
-    const watchMs = Date.now() - mountedAt.current;
+    const watchMs = Date.now() - watchStartedAt.current;
     trackIntroFilmDismissed({
       role: 'sponsor',
       action,

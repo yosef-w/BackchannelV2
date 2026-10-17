@@ -61,6 +61,7 @@ import {
   easeOut,
   useCinemaClock,
   useCinemaHaptics,
+  useRouteFocused,
   win,
 } from '@/components/cinema/engine';
 import {
@@ -131,26 +132,38 @@ interface IntroCinemaProps {
 }
 
 export function IntroCinema({ onContinue, onSignIn, onBack }: IntroCinemaProps) {
-  const { master, breath, march, advance } = useCinemaClock(
+  const { master, breath, march, focused, advance } = useCinemaClock(
     TOTAL_MS,
     LOOP_START,
     ACT_STARTS,
   );
-  useCinemaHaptics(master, BEATS);
+  useCinemaHaptics(master, BEATS, focused);
   const reduceMotion = useReducedMotion();
+  const isFocused = useRouteFocused();
 
-  // Watch-time analytics: one dismissal event, whichever exit is taken.
-  const mountedAt = useRef(Date.now());
+  // Watch-time analytics: one dismissal event per visit, whichever exit is
+  // taken.
+  const watchStartedAt = useRef(Date.now());
   // None of the exits (Skip, the main CTA, sign-in, back) disable
   // themselves, so a fast double-tap — or Skip immediately followed by a
   // tap on the CTA before the first navigation resolves — could
   // independently call onContinue()/onSignIn()/onBack() twice, stacking a
   // duplicate screen on the nav stack.
   const dismissedRef = useRef(false);
+  // /intro is pushed over (never replaced), so this component survives the
+  // trip to sign-up/sign-in and a swipe-back. Re-arm the one-shot guard on
+  // every focus — left armed from the first visit, it swallowed every tap
+  // on the second, and the film read as dead (the "Skip does nothing after
+  // backing out of the résumé step" bug).
+  useEffect(() => {
+    if (!isFocused) return;
+    dismissedRef.current = false;
+    watchStartedAt.current = Date.now();
+  }, [isFocused]);
   const dismiss = (action: 'skip' | 'cta' | 'sign_in' | 'back') => {
     if (dismissedRef.current) return;
     dismissedRef.current = true;
-    const watchMs = Date.now() - mountedAt.current;
+    const watchMs = Date.now() - watchStartedAt.current;
     trackIntroFilmDismissed({
       role: 'applicant',
       action,

@@ -208,6 +208,10 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
       Sentry.captureException(err, {
         tags: { flow: "revenuecat_initialize" },
       });
+      // Left at "idle", the paywall shows skeleton rows forever with no way
+      // to retry. "error" surfaces the "plans aren't loading" state whose
+      // retry goes through refreshOfferings → initialize again.
+      set({ offeringsStatus: "error" });
     }
   },
 
@@ -254,7 +258,14 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
   // ── refreshOfferings ───────────────────────────────────────────────────────
 
   refreshOfferings: async () => {
-    if (!PREMIUM_ENABLED || !get().isInitialized) return;
+    if (!PREMIUM_ENABLED) return;
+    if (!get().isInitialized) {
+      // Not configured (the launch-time initialize() threw) — the paywall's
+      // retry lands here, so retry the configure itself; on success it
+      // calls back into this function with isInitialized set.
+      await get().initialize();
+      return;
+    }
     set({ offeringsStatus: "loading" });
     try {
       const offerings = await Purchases.getOfferings();
@@ -376,6 +387,13 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
     trackRestorePurchasesRequested();
     try {
       set({ isLoading: true });
+      // Calling into the SDK before configure() succeeded throws a generic
+      // error the UI reads as "no previous purchase found" — give the
+      // configure one more chance first, and fail loudly if it still can't.
+      if (!get().isInitialized) await get().initialize();
+      if (!get().isInitialized) {
+        throw new Error("Purchases aren't available right now");
+      }
       const info = await Purchases.restorePurchases();
       const nowPremium = isEntitlementActive(info);
       set({ customerInfo: info, isPremium: nowPremium });

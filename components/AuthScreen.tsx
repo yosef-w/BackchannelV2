@@ -39,6 +39,7 @@ import {
 import { Colors, Fonts, Type } from "@/constants/theme";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useOnboardingStore } from "@/stores/useOnboardingStore";
+import { clearOnboardingRegistered } from "@/utils/onboardingDraft";
 import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
 import { useToastStore } from "@/stores/useToastStore";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
@@ -225,6 +226,10 @@ export function AuthScreen({
       // Logging in WITH a password is proof one exists — clears a stale
       // `false` left by a previous pure-SSO session on this device.
       await setHasPassword(true);
+      // A pending-signup flag on this device belongs to whoever registered
+      // here last, not to this account — left set, the next cold start
+      // would route this user into that account's questionnaire.
+      await clearOnboardingRegistered();
 
       // Backend doesn't return profile info in login response — seed just
       // the email locally; fetchFromBackend() (fired by _layout.tsx as soon
@@ -290,6 +295,11 @@ export function AuthScreen({
     // False for a pure-SSO account — drives the Privacy & Security
     // screen's "Set a Password" UX (password-gated flows 400 without one).
     await setHasPassword(response.has_password);
+    // Same as the password login above — and doubly important on the
+    // needs_onboarding branch: a stale flag would seed the questionnaire's
+    // registeredRef true for this already-authenticated user, so it would
+    // skip complete-onboarding and the role would never be attached.
+    await clearOnboardingRegistered();
     seedSessionEmail(response.email);
 
     if (response.needs_onboarding) {
@@ -314,8 +324,15 @@ export function AuthScreen({
       };
       if (userType === "sponsor") {
         updateSponsorData(prefill);
-      } else {
+      } else if (userType === "applicant") {
         updateApplicantData(prefill);
+      } else {
+        // /sign-in — role unknown here, chosen next on /choose-role. Seed
+        // BOTH slices: seeding only the applicant one left a user who then
+        // picked Sponsor with an empty name/email (no draft autosave, blank
+        // initials, null email in analytics).
+        updateApplicantData(prefill);
+        updateSponsorData(prefill);
       }
       onComplete();
       return;

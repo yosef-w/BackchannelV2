@@ -39,11 +39,16 @@ export default function SignInScreen() {
         router.dismissAll();
         router.replace("/dashboard");
       }}
-      // Defensive fallback only — onRequestSignUp intercepts every "Sign up"
-      // tap while isLogin is true, so the signup submit path below should
-      // never actually run from this screen.
-      onComplete={() => router.replace("/choose-role")}
-      onRequestSignUp={() => router.replace("/choose-role")}
+      // Both exits lead to role selection: a brand-new SSO account
+      // (onComplete — needs_onboarding, role unknown here) and a "Sign up"
+      // tap. dismissTo(), not replace(): from the film's sign-in link the
+      // stack is [splash, choose-role, intro, sign-in], and replace() made
+      // it [splash, choose-role, intro, choose-role] — a second role picker
+      // whose back button reopened the film. dismissTo() pops back to the
+      // existing /choose-role (and pushes one when the user came straight
+      // from splash, where it isn't in the stack).
+      onComplete={() => router.dismissTo("/choose-role")}
+      onRequestSignUp={() => router.dismissTo("/choose-role")}
     />
   );
 }
