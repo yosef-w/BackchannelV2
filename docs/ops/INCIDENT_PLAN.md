@@ -180,7 +180,7 @@ Use UptimeRobot / Better Stack / Checkly (any external checker; not on DO itself
 | Monitor | URL | Expect | Purpose |
 |---|---|---|---|
 | **API shallow** | `GET https://oyster-app-4pg5w.ondigitalocean.app/api/health/` | 200, body contains `"status":"ok"` | Process is alive (DO uses this same path for its own check). No DB. |
-| **API deep** | `GET .../api/health/ready/` | 200 and `"status":"ok"` (**503 means degraded**: DB or Redis) | Database + Redis round trip. Alert on 2 consecutive failures. **Note:** on failure the body returns the raw exception string (first 200 chars) in `checks`, and the endpoint is public: ask Nico to redact it (info-leak, §V-style). |
+| **API deep** | `GET .../api/health/ready/` | 200 and `"status":"ok"` (**503 means degraded**: DB or Redis) | Database + Redis round trip. Alert on 2 consecutive failures. On failure the body says `"error"` only (exception text is logged server-side, not returned). |
 | **Remote config** (after §AB) | `GET .../api/app-config/` | 200, valid JSON, `maintenance_message` is null | The break-glass endpoint itself; also alert if `maintenance_message` is unexpectedly non-null. |
 | **Auth path smoke** | Synthetic `POST .../api/login/` with a dedicated monitor account (or a keyword monitor on a cheap authed GET) | 200 | Catches "health ok but login broken" (Redis/JWT/DB-specific). Use a dedicated low-privilege test user; do not use a real user; respect the 10/min login throttle. |
 | **Landing/legal site** | `GET https://backchannelapp.netlify.app/privacy.html` and `/terms.html` | 200 | App Review and the in-app links depend on them. |
@@ -234,9 +234,9 @@ Channels (pick in order of reach): (1) in-app `maintenance_message` (when §AB i
 > BackChannel is briefly down for maintenance. Your matches and messages are safe. Please try again in a few minutes.
 
 **Data incident (only after counsel approves):**
-> We are writing to tell you about a security incident affecting some BackChannel accounts. What happened: {}. What information was involved: {}. What we are doing: {}. What you can do: {}. Contact: support@backchannel.app. (Counsel to confirm required content and delivery per state law.)
+> We are writing to tell you about a security incident affecting some BackChannel accounts. What happened: {}. What information was involved: {}. What we are doing: {}. What you can do: {}. Contact: support@backchannel.it.com. (Counsel to confirm required content and delivery per state law.)
 
-**Support inbox reality:** `support@backchannel.app` has no MX today (§W #4). During an incident, mail to it bounces; fix MX before launch or list a working contact.
+**Support inbox reality:** `support@backchannel.it.com` has no MX today (§W #4). During an incident, mail to it bounces; fix MX before launch or list a working contact.
 
 ---
 

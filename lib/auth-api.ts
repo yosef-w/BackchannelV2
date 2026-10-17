@@ -202,6 +202,10 @@ export interface RawEducationRow {
 export interface ProfileResponse {
   USER_ID?: string;
   IS_SPONSOR?: boolean;
+  /** Server-side entitlement from the RevenueCat webhook (audit record;
+   *  the app's premium state still comes from the RevenueCat SDK). */
+  IS_PREMIUM?: boolean;
+  PREMIUM_EXPIRES_AT?: string | null;
   FIRST_NAME?: string | null;
   LAST_NAME?: string | null;
   EMAIL?: string | null;
@@ -436,8 +440,10 @@ export const authApi = {
   /**
    * Refresh access token using refresh token
    */
-  refreshToken: async (refreshToken: string): Promise<{ access: string }> => {
-    return api.post<{ access: string }>(
+  refreshToken: async (
+    refreshToken: string,
+  ): Promise<{ access: string; refresh?: string }> => {
+    return api.post<{ access: string; refresh?: string }>(
       "/api/token/refresh/",
       {
         refresh: refreshToken,
@@ -472,12 +478,9 @@ export const authApi = {
    * docs/BACKEND_CHANGES_NEEDED.md §W #3 (Apple Guideline 5.1.1(v)):
    * re-verifies against a FRESH identity token from the same provider
    * (must resolve to the same sso_identities row as the caller's
-   * user_id), then runs the same purge as the password path.
-   *
-   * Not yet implemented server-side as of this writing — the request
-   * shape matches the doc's contract exactly so this starts working the
-   * moment that backend endpoint ships, no frontend change required.
-   * Until then it 400s the same way the old "no password" path did.
+   * user_id), then runs the same purge as the password path. Live in
+   * production since backend PR #158. Errors: 401 invalid token, 403 the
+   * token belongs to a different account, 503 provider unavailable.
    */
   deleteAccountWithSso: async (
     provider: "apple" | "google",

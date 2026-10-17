@@ -268,7 +268,16 @@ export function PrivacySecurityScreen({
 
     setUpdating(true);
     try {
-      await changePassword(currentPassword, newPassword);
+      const result = await changePassword(
+        currentPassword,
+        newPassword,
+        refreshToken,
+      );
+      if (result.access_token && result.refresh_token) {
+        await useAuthStore
+          .getState()
+          .setAuthTokens(result.access_token, result.refresh_token);
+      }
       trackPasswordChanged();
       resetPasswordFields();
       setStep("main");

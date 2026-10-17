@@ -8,9 +8,8 @@
 //   - maintenance:     a message shown instead of the app during an incident
 //   - flags:           named booleans (kill switches / gradual rollouts)
 //
-// FAIL-OPEN is the whole design. This endpoint being missing (it doesn't
-// exist on the backend until docs/BACKEND_CHANGES_NEEDED.md §AB lands),
-// slow, or returning garbage must NEVER lock a user out of the app — so every
+// FAIL-OPEN is the whole design. This endpoint being missing, slow, or
+// returning garbage must NEVER lock a user out of the app — so every
 // failure path resolves to "no restrictions". The last good response is
 // cached, so a bad-connection cold start still honors a previously-seen
 // min_version instead of forgetting it.

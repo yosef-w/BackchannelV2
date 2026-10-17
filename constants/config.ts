@@ -174,4 +174,4 @@ export const APP_STORE_URL = `https://apps.apple.com/app/id${APP_STORE_ID}`;
 // records yet (docs/BACKEND_CHANGES_NEEDED.md §W #4/#5) — mail to this
 // address bounces until that's set up. Nothing else in the app changes when
 // it is.
-export const SUPPORT_EMAIL = "support@backchannel.app";
+export const SUPPORT_EMAIL = "support@backchannel.it.com";
