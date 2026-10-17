@@ -50,6 +50,7 @@ import {
     trackProfileFieldUpdated,
     trackProfilePhotoUploaded,
 } from "@/lib/analytics/mixpanel";
+import { clearPerUserDeviceState } from "@/lib/sessionTeardown";
 import {
     logout,
     unregisterDevice,
@@ -1596,8 +1597,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
     cancelUnfinishedDeckReminder();
     cancelCheckInNudges(userType);
     try {
-      // Call backend logout to invalidate session
-      await logout();
+      // Call backend logout to invalidate session — the refresh token is
+      // what it blacklists (the device token was already deactivated above).
+      await logout({ refreshToken: useAuthStore.getState().refreshToken });
     } catch (error) {
       console.warn("[ProfileView] Backend logout failed:", error);
       // Continue with local logout even if backend call fails
@@ -1605,6 +1607,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
     // Clear local auth state and user data
     await clearAuth();
     await clearUserProfileData();
+    // Device-level per-user state (held/daily likes, free request, pending
+    // signup flag, first-run intro, check-in stages) — see sessionTeardown.
+    await clearPerUserDeviceState();
     // Reset all user-specific store state so the next login starts fresh.
     // Without this, card index, job lists, and onboarding data from the
     // previous session bleed into the new user's experience.
@@ -1639,6 +1644,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
     rcReset();
     await clearAuth();
     await clearUserProfileData();
+    await clearPerUserDeviceState();
     // Parity with logout — reset jobs store + onboarding data so a
     // re-registration on this device doesn't inherit deck state
     // (card index, session likes/matches) from the deleted account.

@@ -24,6 +24,7 @@ import {
   trackSignUpRoleSelected,
 } from "@/lib/analytics/mixpanel";
 import { useOnboardingStore } from "@/stores/useOnboardingStore";
+import { useRouteFocused } from "@/lib/useRouteFocused";
 import { Colors, Fonts, Type } from "@/constants/theme";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
@@ -62,6 +63,15 @@ export function ModeSelection({ onSelect, onBack }: ModeSelectionProps) {
   const [selected, setSelected] = useState<"applicant" | "sponsor" | null>(
     null,
   );
+  // `selected` doubles as the re-entrancy guard below, and /choose-role is
+  // pushed over (never replaced) — the film's "wrong role?" back, the
+  // sign-up screen's back, a swipe-back and onboarding's dismissTo() all
+  // land on this same still-mounted instance. Re-arm on every focus, or
+  // both cards are dead from the second visit on.
+  const isFocused = useRouteFocused();
+  useEffect(() => {
+    if (isFocused) setSelected(null);
+  }, [isFocused]);
   const setUserType = useOnboardingStore((state) => state.setUserType);
 
   const handleSelect = (mode: "applicant" | "sponsor") => {
