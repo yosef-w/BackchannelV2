@@ -147,20 +147,30 @@ export default function TabsLayout() {
         // auth-loss direction instead of the auth-gain direction.
         router.dismissAll();
         router.replace("/splash");
-        // Single place every "session ended" path funnels through — manual
-        // logout, account deletion, AND a reactive 401 session expiry all
-        // flip isAuthenticated false and land here. Manual logout/delete
-        // used to clear these themselves (see ProfileView.tsx's old
-        // confirmLogout/handleAccountDeleted), which fixed the cross-
-        // account cache leak for those two paths but left the reactive-
-        // expiry path — arguably the MORE common way a device changes
-        // hands, since it needs no explicit action from the outgoing user
-        // — still leaking the previous account's cached matches, check-in
-        // stages, and sponsor-request state to whoever logs in next.
-        // Runs after the navigation above (not before), so the still-
-        // mounted authenticated screen tree isn't hit with a burst of
-        // now-401 refetches from queries that lost their cached data out
-        // from under them while still on screen.
+      }, 800);
+      // Single place every "session ended" path funnels through — manual
+      // logout, account deletion, AND a reactive 401 session expiry all
+      // flip isAuthenticated false and land here. Manual logout/delete
+      // used to clear these themselves (see ProfileView.tsx's old
+      // confirmLogout/handleAccountDeleted), which fixed the cross-
+      // account cache leak for those two paths but left the reactive-
+      // expiry path — arguably the MORE common way a device changes
+      // hands, since it needs no explicit action from the outgoing user
+      // — still leaking the previous account's cached matches, check-in
+      // stages, and sponsor-request state to whoever logs in next.
+      // Runs after the navigation (not before), so the still-mounted
+      // authenticated screen tree isn't hit with a burst of now-401
+      // refetches from queries that lost their cached data out from under
+      // them while still on screen.
+      //
+      // Deliberately NOT cancelled by the cleanup below: manual logout and
+      // deletion call router.replace("/splash") themselves a few ms after
+      // clearAuth(), which unmounts this shell and ran the cleanup before
+      // the 800ms elapsed — so the clearing it used to share a timer with
+      // never happened on exactly the two paths that are an explicit
+      // "someone else may use this phone next" signal. The cache is
+      // global, so the timer outliving the shell is fine.
+      setTimeout(() => {
         queryClient.clear();
         clearLocalCheckInCache().catch(() => {});
         clearSponsorRequestCache().catch(() => {});

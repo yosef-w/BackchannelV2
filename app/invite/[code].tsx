@@ -27,7 +27,14 @@ export default function InviteRoute() {
         const stored = await setPendingReferrer(code);
         if (stored) trackInviteOpened({ referrerId: code });
       }
-      if (!cancelled) router.replace("/");
+      if (cancelled) return;
+      // Opened while the app is already running, this screen sits on top
+      // of whatever the user was looking at — return there. replace("/")
+      // used to leave a signed-in user staring at the marketing splash
+      // (index → splash, whose cold-start routing had already latched) on
+      // top of their own tabs. Cold-start: no history, so splash it is.
+      if (router.canGoBack()) router.back();
+      else router.replace("/");
     })();
     return () => {
       cancelled = true;

@@ -12,15 +12,8 @@
 // product speak, instead of re-breaking the world every 23 seconds.
 
 import * as Haptics from 'expo-haptics';
-import { NavigationContext } from 'expo-router/react-navigation';
-import React, {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useSyncExternalStore,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useRouteFocused } from '@/lib/useRouteFocused';
 import { StyleSheet, View, type TextStyle } from 'react-native';
 import Animated, {
   cancelAnimation,
@@ -58,34 +51,9 @@ export const win = (t: number, a: number, b: number): number => {
 };
 
 // ── Route focus ─────────────────────────────────────────────────────────
-
-/**
- * Whether the enclosing route is the one on screen. React Navigation's own
- * useIsFocused throws when rendered outside a navigator; this reads the
- * same context directly and reports `true` when there is none (a one-shot
- * pop inside a modal, a unit test), so engine consumers never pay for a
- * focus check they don't need.
- */
-export function useRouteFocused(): boolean {
-  const navigation = useContext(NavigationContext);
-  const subscribe = useCallback(
-    (onChange: () => void) => {
-      if (!navigation) return () => {};
-      const offFocus = navigation.addListener('focus', onChange);
-      const offBlur = navigation.addListener('blur', onChange);
-      return () => {
-        offFocus();
-        offBlur();
-      };
-    },
-    [navigation],
-  );
-  const read = useCallback(
-    () => (navigation ? navigation.isFocused() : true),
-    [navigation],
-  );
-  return useSyncExternalStore(subscribe, read, read);
-}
+// Lives in lib/ (shared with the rest of the pushed-not-replaced funnel);
+// re-exported here so the films keep a single engine import.
+export { useRouteFocused };
 
 // ── Master clock ────────────────────────────────────────────────────────
 
