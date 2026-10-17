@@ -35,8 +35,7 @@ import { Colors } from "@/constants/theme";
 import { getUnreadNotificationCount } from "@/lib/api";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
-import { clearLocalCheckInCache } from "@/utils/checkInStageCache";
-import { clearSponsorRequestCache } from "@/utils/sponsorRequestCache";
+import { clearPerUserDeviceState } from "@/lib/sessionTeardown";
 import type { PublicProfileUserData } from "@/types/profiles";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -172,8 +171,7 @@ export default function TabsLayout() {
       // global, so the timer outliving the shell is fine.
       setTimeout(() => {
         queryClient.clear();
-        clearLocalCheckInCache().catch(() => {});
-        clearSponsorRequestCache().catch(() => {});
+        clearPerUserDeviceState().catch(() => {});
       }, 800);
       return () => clearTimeout(timer);
     }

@@ -30,6 +30,11 @@ export async function hasUsedFreeSponsorRequest(): Promise<boolean> {
   }
 }
 
+/** Per device, so logout must wipe it or the next account starts "used". */
+export async function clearFreeSponsorRequest(): Promise<void> {
+  await AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
+}
+
 export async function markFreeSponsorRequestUsed(): Promise<void> {
   try {
     await AsyncStorage.setItem(STORAGE_KEY, "1");

@@ -28,6 +28,14 @@ interface DailyLikeRecord {
 const STORAGE_KEY = (role: "applicant" | "sponsor") =>
   `@bc/dailyLikesUsed_${role}`;
 
+/** Both roles' counters — the key is per device, so logout must wipe it. */
+export async function clearDailyLikesUsed(): Promise<void> {
+  await AsyncStorage.multiRemove([
+    STORAGE_KEY("applicant"),
+    STORAGE_KEY("sponsor"),
+  ]).catch(() => {});
+}
+
 function todayKey(): string {
   const now = new Date();
   // Local calendar date, not UTC — matches HomeView's isSameDay check,

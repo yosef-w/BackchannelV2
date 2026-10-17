@@ -444,8 +444,14 @@ export function SponsorQuestionnaire({
         work_email: answers[7],
       });
     },
-    onSuccess: async () => {
+    onSuccess: async (data) => {
       if (!ssoSession) return;
+      // The SSO exchange stored tokens with NO role — this response is the
+      // only place it ever arrives. Without persisting it, the tabs shell
+      // guessed from the `?mode=sponsor` param, which is lost the moment
+      // another tab is opened (and on every cold start): SSO sponsors
+      // ended up in the applicant app.
+      await useAuthStore.getState().setRole(data.role);
       await afterAccountReady(ssoSession.userId);
     },
     onError: (error: Error) => {

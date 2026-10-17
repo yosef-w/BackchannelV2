@@ -14,11 +14,14 @@
 import React from "react";
 import { Modal } from "react-native";
 import { Onboarding } from "@/components/Onboarding";
+import { HOME_INTRO_PENDING_KEY } from "@/lib/homeIntroPending";
 
 // AsyncStorage key for the one-time "show the intro" flag. Set when a user
 // completes signup; consumed (and cleared) on their first Home view, so the
-// intro only ever shows to newly-signed-up users.
-export const HOME_INTRO_PENDING_KEY = "@bc/homeIntroPending";
+// intro only ever shows to newly-signed-up users. Re-exported for the
+// existing importers (questionnaires, HomeView); the key itself lives in
+// lib/ so sessionTeardown can reach it without this component tree.
+export { HOME_INTRO_PENDING_KEY };
 
 interface HomeIntroProps {
   visible: boolean;

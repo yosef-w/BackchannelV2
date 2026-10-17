@@ -6,12 +6,13 @@ import { AuthScreen } from "../components/AuthScreen";
 import { SponsorQuestionnaire } from "../components/SponsorQuestionnaire";
 import { resetUser } from "@/lib/analytics/mixpanel";
 import { logout } from "@/lib/api";
+import { clearPerUserDeviceState } from "@/lib/sessionTeardown";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useOnboardingStore } from "@/stores/useOnboardingStore";
 import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
+import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import {
   clearOnboardingDraft,
-  clearOnboardingRegistered,
   getPendingOnboardingRole,
 } from "@/utils/onboardingDraft";
 
@@ -58,6 +59,7 @@ export default function OnboardingScreen() {
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const ssoSession = useOnboardingStore((state) => state.ssoSession);
   const clearOnboardingData = useOnboardingStore((state) => state.clearProfile);
+  const clearUserProfileData = useUserProfileStore((state) => state.clearData);
   const rcReset = useSubscriptionStore((state) => state.reset);
   const skipToQuestionnaire =
     isAuthenticated && (!!ssoSession || params.resume === "1");
@@ -126,35 +128,37 @@ export default function OnboardingScreen() {
     router.replace({ pathname: "/dashboard", params: { mode: userType } });
   };
 
-  // Backing out of the questionnaire's FIRST step, for someone who is
-  // already authenticated (see skipToQuestionnaire above), has no auth
-  // step to return to — and the route underneath us is usually the role's
-  // pre-signup film (choose-role → /intro → here, all pushed), which an
-  // authenticated user has no business landing back on. A plain back()
-  // used to do exactly that: it assumed /choose-role was directly beneath,
-  // true only for the sign-in.tsx SSO handoff on a second pass (film
-  // already seen). Two cases now:
+  // Backing out of the questionnaire's FIRST step. The route underneath us
+  // is usually the role's pre-signup film (choose-role → /intro → here,
+  // all pushed), and a plain back() used to land there: it assumed
+  // /choose-role was directly beneath, true only for the sign-in.tsx SSO
+  // handoff on a second pass (film already seen). Three cases, checked in
+  // this order:
   //
-  //  1. Authenticated via SSO but the role is NOT attached yet (the résumé
-  //     / first step hasn't run — markOnboardingRegistered is set only
-  //     once it has): role selection is still a meaningful place to go,
-  //     since picking the other role is still possible. dismissTo() pops
-  //     everything above /choose-role, film included, with the native pop
-  //     animation (and pushes it on a deep link / hot reload with no stack).
+  //  1. Registered with a role (markOnboardingRegistered is set the moment
+  //     the first step creates/attaches the account — password AND SSO
+  //     paths): the whole pre-signup funnel beneath us, this route's own
+  //     sign-up form included, is for people without an account, so there
+  //     is nowhere to go "back" to. The only honest exit is signing out —
+  //     confirmed, since a stray tap must not throw someone out mid-form.
+  //     (The password path used to drop these users back on the sign-up
+  //     form while still logged in, from where "Sign in" as a different
+  //     account left this account's pending-signup flag behind.)
   //
-  //  2. Registered with a role: the whole pre-signup funnel beneath us is
-  //     for people without an account, so there is nowhere to go "back"
-  //     to. The only honest exit is signing out — confirmed, since the
-  //     account already exists and a stray tap must not throw someone out
-  //     mid-form.
+  //  2. Authenticated via SSO but the role is NOT attached yet (the first
+  //     step hasn't run): role selection is still a meaningful place to
+  //     go, since picking the other role is still possible. dismissTo()
+  //     pops everything above /choose-role, film included, with the native
+  //     pop animation (and pushes it on a deep link / hot reload).
+  //
+  //  3. Not authenticated: back to this route's own auth step.
   const handleQuestionnaireBack = async () => {
-    if (!skipToQuestionnaire) {
-      setStep("auth");
-      return;
-    }
-    const registeredRole = await getPendingOnboardingRole();
+    const registeredRole = isAuthenticated
+      ? await getPendingOnboardingRole()
+      : null;
     if (!registeredRole) {
-      router.dismissTo("/choose-role");
+      if (skipToQuestionnaire) router.dismissTo("/choose-role");
+      else setStep("auth");
       return;
     }
     Alert.alert(
@@ -176,16 +180,20 @@ export default function OnboardingScreen() {
     } catch {
       // Best effort — local sign-out proceeds regardless.
     }
-    // The pending-role flag is per device, not per account: left set, the
-    // next account to sign in on this phone would be routed into THIS
-    // user's unfinished questionnaire on its next cold start.
-    await clearOnboardingRegistered();
+    // Device-level per-user state — above all the pending-signup flag,
+    // which is per device, not per account: left set, the next account to
+    // sign in on this phone would be routed into THIS user's unfinished
+    // questionnaire on its next cold start. See sessionTeardown.
+    await clearPerUserDeviceState();
     await clearOnboardingDraft(
       userType === "sponsor"
         ? "onboarding_draft_sponsor_v1"
         : "onboarding_draft_applicant_v1",
     );
     clearOnboardingData(); // drops ssoSession + prefill
+    // The résumé step may already have filled the profile store (skills,
+    // experience) — the next account on this phone must not inherit it.
+    await clearUserProfileData();
     resetUser();
     rcReset();
     await clearAuth();

@@ -947,6 +947,17 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
       const userType = profile.IS_SPONSOR ? "sponsor" : "applicant";
       useOnboardingStore.getState().setUserType(userType);
       set({ userId: profile.USER_ID ?? null });
+      // Self-heal a missing auth role from the same flag. SSO accounts
+      // created before setRole existed (and any future path that lands
+      // here role-less) otherwise stay role-less forever, and the tabs
+      // shell keeps guessing from URL params. Dynamic import for the same
+      // cycle reason as authApi above.
+      const { useAuthStore } = await import("./useAuthStore");
+      if (!useAuthStore.getState().role) {
+        await useAuthStore
+          .getState()
+          .setRole(profile.IS_SPONSOR ? "Sponsor" : "Applicant");
+      }
 
       // Preserve all locally-stored data so fields not returned by the backend
       // (insights, skills, address details, portfolio, etc.) are not wiped.
