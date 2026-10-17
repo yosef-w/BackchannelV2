@@ -36,6 +36,7 @@ import { getUnreadNotificationCount } from "@/lib/api";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import { clearPerUserDeviceState } from "@/lib/sessionTeardown";
+import { useRouteFocused } from "@/lib/useRouteFocused";
 import type { PublicProfileUserData } from "@/types/profiles";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -229,13 +230,18 @@ export default function TabsLayout() {
     }
   }, []);
 
+  // Only while this shell is the screen on top — a deep link (verify-email,
+  // reset-password) pushed over it otherwise keeps the poll running from
+  // underneath. App-background is already covered by react-query's
+  // focusManager for the other polls; this one is a bare interval.
+  const shellFocused = useRouteFocused();
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !shellFocused) return;
     fetchUnreadCount();
     // Poll every 60s so the badge stays reasonably fresh.
     const interval = setInterval(fetchUnreadCount, 60_000);
     return () => clearInterval(interval);
-  }, [isAuthenticated, fetchUnreadCount]);
+  }, [isAuthenticated, shellFocused, fetchUnreadCount]);
 
   // ── Referral check-in system ─────────────────────────────────────────────
   const [showApplicantCheckIn, setShowApplicantCheckIn] = useState(false);
@@ -301,6 +307,13 @@ export default function TabsLayout() {
 
       const type = data.type as string | undefined;
       trackPushNotificationTapped({ pushType: type });
+      // The notifications feed and the public-profile viewer are layout
+      // state, not routes: router.navigate() below switches the tab
+      // underneath them but leaves them covering it (tab bar hidden, the
+      // tap looks like it did nothing). Close both first; the generic
+      // fallback re-opens the feed deliberately.
+      setNotificationsOpen(false);
+      setPublicProfileData(null);
       if (
         type === "match" ||
         type === "referral" ||

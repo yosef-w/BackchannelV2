@@ -324,8 +324,15 @@ export function AuthScreen({
       };
       if (userType === "sponsor") {
         updateSponsorData(prefill);
-      } else {
+      } else if (userType === "applicant") {
         updateApplicantData(prefill);
+      } else {
+        // /sign-in — role unknown here, chosen next on /choose-role. Seed
+        // BOTH slices: seeding only the applicant one left a user who then
+        // picked Sponsor with an empty name/email (no draft autosave, blank
+        // initials, null email in analytics).
+        updateApplicantData(prefill);
+        updateSponsorData(prefill);
       }
       onComplete();
       return;

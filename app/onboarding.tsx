@@ -176,7 +176,8 @@ export default function OnboardingScreen() {
   // tear down, but the same identity resets apply.
   const signOutOfOnboarding = async () => {
     try {
-      await logout();
+      const { refreshToken, deviceToken } = useAuthStore.getState();
+      await logout({ refreshToken, deviceToken });
     } catch {
       // Best effort — local sign-out proceeds regardless.
     }

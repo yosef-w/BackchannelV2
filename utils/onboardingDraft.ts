@@ -65,13 +65,18 @@ export async function loadOnboardingDraft<T>(
 
   const envelope = parsed as Partial<DraftEnvelope<T>> | null;
   const email = normalizeEmail(currentEmail);
+  // No email to check ownership against yet — on a resumed cold start the
+  // caller's email comes from the profile store, which may still be
+  // hydrating when the questionnaire first mounts. Can't tell whose draft
+  // this is, so leave it alone (don't discard) and let the caller's retry
+  // with the real email decide.
+  if (!email) return null;
   if (
     !envelope ||
     typeof envelope !== "object" ||
     typeof envelope.email !== "string" ||
     typeof envelope.savedAt !== "number" ||
     envelope.data === undefined ||
-    !email ||
     normalizeEmail(envelope.email) !== email ||
     now - envelope.savedAt > DRAFT_MAX_AGE_MS
   ) {

@@ -817,10 +817,18 @@ export async function fetchProfilesPack(jobId?: string): Promise<{
 
 /**
  * 🚪 Logout
- * Invalidate current session on backend
+ * Invalidate current session on backend. The backend only blacklists the
+ * refresh token and deactivates the push token when they're actually in
+ * the body — posting with nothing (as this did) was a server-side no-op.
  */
-export async function logout(): Promise<void> {
-  await api.post<void>("/api/logout/");
+export async function logout(opts?: {
+  refreshToken?: string | null;
+  deviceToken?: string | null;
+}): Promise<void> {
+  await api.post<void>("/api/logout/", {
+    ...(opts?.refreshToken ? { refresh_token: opts.refreshToken } : {}),
+    ...(opts?.deviceToken ? { device_token: opts.deviceToken } : {}),
+  });
 }
 
 /**

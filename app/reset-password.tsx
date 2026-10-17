@@ -37,6 +37,7 @@ import {
     trackResetPasswordSucceeded,
 } from "@/lib/analytics/mixpanel";
 import { authApi } from "@/lib/auth-api";
+import { useAuthStore } from "@/stores/useAuthStore";
 import { AndroidInputFix, Colors, Type } from "@/constants/theme";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
 
@@ -98,7 +99,16 @@ export default function ResetPasswordRoute() {
     }
   };
 
-  const handleGoToSignIn = () => {
+  const handleGoToSignIn = async () => {
+    // The reset bumped the account's token_version, revoking every session
+    // — including this phone's if the link was opened while signed in
+    // (stack: tabs underneath us). Drop the dead session now instead of
+    // letting the next launch discover it with a flash of stale data and
+    // a 401 kick-out. The tabs shell's expiry watcher then tears down the
+    // per-user caches on its own timer.
+    if (useAuthStore.getState().isAuthenticated) {
+      await useAuthStore.getState().clearAuth();
+    }
     // Straight to sign-in, not the splash screen — a user who just reset
     // their password shouldn't have to walk role-selection + onboarding
     // slides again to log back in.

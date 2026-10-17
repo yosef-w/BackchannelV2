@@ -418,7 +418,9 @@ export function SponsorQuestionnaire({
   // registration was always a single end-of-flow call, not resume-first).
   const completeSsoOnboardingMutation = useMutation({
     mutationFn: async () => {
-      return authApi.completeSsoOnboarding({
+      // Idempotent variant: a lost response after the server already
+      // attached the role must not strand the user on the last step.
+      return authApi.completeSsoOnboardingIdempotent({
         // Capitalized per the backend's validation — it rejects anything
         // but exactly 'Applicant'/'Sponsor'.
         role: "Sponsor",
@@ -442,7 +444,7 @@ export function SponsorQuestionnaire({
         financial_reward: answers[5] === "Yes" ? "yes" : "no",
         insights: selectedInsights,
         work_email: answers[7],
-      });
+      }, ssoSession?.userId ?? "");
     },
     onSuccess: async (data) => {
       if (!ssoSession) return;

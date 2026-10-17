@@ -1597,8 +1597,9 @@ export function ProfileView({ userType }: ProfileViewProps) {
     cancelUnfinishedDeckReminder();
     cancelCheckInNudges(userType);
     try {
-      // Call backend logout to invalidate session
-      await logout();
+      // Call backend logout to invalidate session — the refresh token is
+      // what it blacklists (the device token was already deactivated above).
+      await logout({ refreshToken: useAuthStore.getState().refreshToken });
     } catch (error) {
       console.warn("[ProfileView] Backend logout failed:", error);
       // Continue with local logout even if backend call fails

@@ -693,23 +693,28 @@ export function ApplicantQuestionnaire({
   // the real data afterward, identically for both signup paths.
   const completeSsoOnboardingMutation = useMutation({
     mutationFn: async () => {
-      return authApi.completeSsoOnboarding({
-        // Capitalized per the backend's validation — it rejects anything
-        // but exactly 'Applicant'/'Sponsor'.
-        role: "Applicant",
-        // The SSO exchange usually stored the name already, but Apple only
-        // sends it once ever — forward anything the flow captured so a
-        // questionnaire-entered name isn't lost.
-        ...(applicantData.firstName?.trim()
-          ? { first_name: applicantData.firstName.trim() }
-          : {}),
-        ...(applicantData.lastName?.trim()
-          ? { last_name: applicantData.lastName.trim() }
-          : {}),
-        skills: [],
-        insights: [],
-        work_preferences: [],
-      });
+      // Idempotent variant: a lost response after the server already
+      // attached the role must not strand the user on this step.
+      return authApi.completeSsoOnboardingIdempotent(
+        {
+          // Capitalized per the backend's validation — it rejects anything
+          // but exactly 'Applicant'/'Sponsor'.
+          role: "Applicant",
+          // The SSO exchange usually stored the name already, but Apple
+          // only sends it once ever — forward anything the flow captured
+          // so a questionnaire-entered name isn't lost.
+          ...(applicantData.firstName?.trim()
+            ? { first_name: applicantData.firstName.trim() }
+            : {}),
+          ...(applicantData.lastName?.trim()
+            ? { last_name: applicantData.lastName.trim() }
+            : {}),
+          skills: [],
+          insights: [],
+          work_preferences: [],
+        },
+        ssoSession?.userId ?? "",
+      );
     },
     onSuccess: async (data) => {
       // Guarded by handleResumeStep only ever calling this mutation when

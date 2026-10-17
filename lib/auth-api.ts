@@ -324,6 +324,33 @@ export const authApi = {
   },
 
   /**
+   * completeSsoOnboarding, treating the backend's 400 "Onboarding is
+   * already complete" as success. The endpoint is one-shot: if the server
+   * attached the role but the response was lost (timeout, flaky signal),
+   * every retry returns that 400 — and without this the user is stuck on
+   * the step for good, with nothing but killing the app to get out.
+   * `userId` fills the synthesized response (the real one carries it).
+   */
+  completeSsoOnboardingIdempotent: async (
+    payload: CompleteSsoOnboardingRequest,
+    userId: string,
+  ): Promise<CompleteSsoOnboardingResponse> => {
+    try {
+      return await authApi.completeSsoOnboarding(payload);
+    } catch (err) {
+      if (err instanceof Error && /already complete/i.test(err.message)) {
+        return {
+          user_id: userId,
+          profile_id: "",
+          role: payload.role,
+          message: err.message,
+        };
+      }
+      throw err;
+    }
+  },
+
+  /**
    * Register new applicant (used during questionnaire)
    */
   register: async (
