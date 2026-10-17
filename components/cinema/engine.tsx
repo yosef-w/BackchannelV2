@@ -236,14 +236,17 @@ export function useCinemaHaptics(
 export function ActProgress({
   master,
   acts,
+  onInk = false,
 }: {
   master: SharedValue<number>;
   acts: readonly (readonly [number, number])[];
+  /** Paper-on-ink palette for the premium sheets' dark pitch zone. */
+  onInk?: boolean;
 }) {
   return (
     <View style={styles.progressRow} pointerEvents="none">
       {acts.map(([a, b], i) => (
-        <ProgressSegment key={i} master={master} a={a} b={b} />
+        <ProgressSegment key={i} master={master} a={a} b={b} onInk={onInk} />
       ))}
     </View>
   );
@@ -253,17 +256,21 @@ function ProgressSegment({
   master,
   a,
   b,
+  onInk,
 }: {
   master: SharedValue<number>;
   a: number;
   b: number;
+  onInk: boolean;
 }) {
   const fill = useAnimatedStyle(() => ({
     width: `${win(master.value, a, b) * 100}%`,
   }));
   return (
-    <View style={styles.progressTrack}>
-      <Animated.View style={[styles.progressFill, fill]} />
+    <View style={[styles.progressTrack, onInk && styles.progressTrackInk]}>
+      <Animated.View
+        style={[styles.progressFill, onInk && styles.progressFillInk, fill]}
+      />
     </View>
   );
 }
@@ -376,6 +383,8 @@ const styles = StyleSheet.create({
     borderRadius: 1,
     backgroundColor: Colors.muted,
   },
+  progressTrackInk: { backgroundColor: 'rgba(255,255,255,0.18)' },
+  progressFillInk: { backgroundColor: Colors.paper },
   captionRow: {
     position: 'absolute',
     left: 36,

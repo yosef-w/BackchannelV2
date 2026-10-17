@@ -2,8 +2,8 @@
 // have no specific card to talk about: the Profile tab's upgrade row and
 // the end-of-deck card. Same shell as the two gates (dark blur, paper
 // sheet, MEMBERS ONLY); the hero is the held cards when there are any,
-// otherwise the PlanLedger (what changes, as three struck-and-raised
-// corrections), then PremiumCheckout.
+// otherwise the PlanReel (what changes, as a three-beat reel on the cinema
+// engine), then PremiumCheckout.
 //
 // Rendered inside its own RN Modal so it stacks above whatever screen
 // opened it. Applicants only, like everything premium.
@@ -13,7 +13,7 @@ import React from "react";
 import { Modal, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
 import { HeldLikeTile } from "@/components/home/HeldLikeTile";
 import { DismissibleSheet, SheetScrollView } from "@/components/ui/DismissibleSheet";
-import { PlanLedger } from "./PlanLedger";
+import { PlanReel } from "./PlanReel";
 import { PremiumCheckout } from "./PremiumCheckout";
 import type { HeldLike } from "@/lib/heldLikes";
 import { sheetColumn, sheetMaxHeight } from "@/lib/responsive";
@@ -103,7 +103,7 @@ export function PremiumSheet({
                     What changes when you{" "}
                     <Text style={styles.titleAccent}>join.</Text>
                   </Text>
-                  <PlanLedger onInk style={styles.ledger} />
+                  <PlanReel style={styles.ledger} />
                 </>
               )}
             </View>
