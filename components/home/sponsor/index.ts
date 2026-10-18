@@ -4,7 +4,9 @@
 
 export { SponsorApplicantCard, SPONSOR_CARD_TAIL } from "./SponsorApplicantCard";
 export type { SponsorApplicantCardProps } from "./SponsorApplicantCard";
+export { ControlsFade } from "./ControlsFade";
 export { DecisionPills } from "./DecisionPills";
+export { FLOATING_NAV_CLEARANCE, floatingActionsBottom } from "./stageLayout";
 export { RoleContextRow } from "./RoleContextRow";
 export { ApplicantHeroCard } from "./ApplicantHeroCard";
 export { ConnectorHeader } from "./ConnectorHeader";
