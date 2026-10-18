@@ -62,6 +62,30 @@ export const SSO_ENABLED = true;
  */
 export const PLATES_ENABLED = true;
 
+/**
+ * SPONSOR_DECK_V2 — the PM redesign of the sponsor's applicant card
+ * (components/home/sponsor, from Tori's "Home & Matches" Figma). true: the
+ * sponsor deck renders SponsorApplicantCard in a single scroll with the
+ * role-context row, pill Pass/Connect and no plate row; the applicant-side
+ * job deck is untouched (still PLATES_ENABLED). false: the Dossier + plates
+ * sponsor deck exactly as before — a one-line kill switch.
+ */
+export const SPONSOR_DECK_V2 = true;
+
+/**
+ * SPONSOR_CARD_LAYOUT — which of the Figma's three card openings leads the
+ * sponsor card. All three share everything below the opening (about,
+ * experience, education, achievements, skills, prompts).
+ *   "hero"      — iPhone 17-13/-9: role row + full-bleed photo card with
+ *                 the strong-match badge and frosted stat grid.
+ *   "connector" — iPhone 17-38/-40: applicant → company connector,
+ *                 "Amy wants *your role.*", stats card.
+ *   "fit"       — iPhone 17-39: identity row + "Wants your *Role.*" and
+ *                 the applicant-vs-your-role fit table.
+ */
+export type SponsorCardLayout = "hero" | "connector" | "fit";
+export const SPONSOR_CARD_LAYOUT: SponsorCardLayout = "hero";
+
 // ─── RevenueCat ───────────────────────────────────────────────────────────────
 //
 // API keys are loaded from env vars so they are never committed to git.
