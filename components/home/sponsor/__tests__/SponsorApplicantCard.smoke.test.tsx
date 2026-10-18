@@ -160,14 +160,14 @@ describe("SponsorApplicantCard", () => {
     expect(r.getByText("STRONG MATCH")).toBeTruthy();
     expect(r.getByText("INTERESTED IN YOUR ROLE")).toBeTruthy();
     expect(r.getByText("Amy Smith")).toBeTruthy();
-    // Section eyebrow + the hero stat label.
-    expect(r.getAllByText("EXPERIENCE").length).toBeGreaterThan(0);
+    // Section eyebrow + the ledger's stat label under the photo card.
+    expect(r.getAllByText("EXPERIENCE").length).toBeGreaterThan(1);
     expect(r.getByText("The New York Times")).toBeTruthy();
     expect(r.getByText("ACHIEVEMENTS")).toBeTruthy();
     expect(r.getByText("MORE ABOUT AMY")).toBeTruthy();
-    // Proposal 1 goes straight from the photo card to EXPERIENCE — the
-    // card's bio summary stands in for About.
-    expect(r.queryByText("ABOUT AMY")).toBeNull();
+    // The bio no longer rides on the (shorter) photo card, so the ABOUT
+    // section carries it in every layout.
+    expect(r.getByText("ABOUT AMY")).toBeTruthy();
     // The report link closes every layout.
     expect(r.queryByText("Report Amy")).toBeNull(); // no onReport passed
   });

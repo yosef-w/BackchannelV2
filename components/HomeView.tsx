@@ -124,8 +124,11 @@ import {
   getDailyLikeCap,
 } from "@/constants/config";
 import {
+  ControlsFade,
   DecisionPills,
   SponsorApplicantCard,
+  FLOATING_NAV_CLEARANCE,
+  floatingActionsBottom,
 } from "@/components/home/sponsor";
 import {
   buildApplicantFacts,
@@ -276,6 +279,11 @@ export function HomeView({
   // activeSponsoredJobId, which both re-fetches the profile pack for that
   // role AND becomes the JOB_ID stamped on every like the sponsor creates.
   const [showJobSwitcher, setShowJobSwitcher] = useState(false);
+  // Measured height of the card stage (scroll + floating pills). The
+  // sponsor deck's hero opening sizes itself to the space above the pills
+  // from this — one measurement that holds on every phone, iPad
+  // orientation and Split View width. Same-value updates bail out.
+  const [stageHeight, setStageHeight] = useState<number | null>(null);
   // First-run editorial intro. Shown once per role the first time the deck is
   // live (so it lands as a "you've arrived" brand moment, not over a spinner).
   const [showIntro, setShowIntro] = useState(false);
@@ -2008,7 +2016,6 @@ export function HomeView({
   // natural bottom position. Scrolling back up reverses it. Reading the
   // same shared value the nav uses keeps the two glued together frame-for-
   // frame, and the nav's withTiming tween carries the buttons along.
-  const FLOATING_NAV_CLEARANCE = 88;
   const floatingActionsAnimatedStyle = useAnimatedStyle(() => {
     const navHidden = Math.min(
       1,
@@ -2511,7 +2518,13 @@ export function HomeView({
                   below). Giving this its own flex:1 box means an
                   absoluteFill overlay covers exactly the card area,
                   not the header above it. */}
-              <View style={styles.cardStage}>
+              <View
+                style={styles.cardStage}
+                onLayout={(e) => {
+                  const h = Math.round(e.nativeEvent.layout.height);
+                  setStageHeight((prev) => (prev === h ? prev : h));
+                }}
+              >
                 {/* Hinge-style: one big vertically-scrolling profile with a
                     cross-fade transition between deck entries. The card
                     metaphor — front face / back face / flip / "show more"
@@ -2584,6 +2597,7 @@ export function HomeView({
                           role={sponsorRole}
                           fit={sponsorFit}
                           layout={SPONSOR_CARD_LAYOUT}
+                          stageHeight={stageHeight}
                           onOpenRoleSwitcher={() => {
                             // Same in-flight guard as the header pill.
                             if (isActionPending) return;
@@ -2712,9 +2726,10 @@ export function HomeView({
                       iPad this control row would otherwise stretch to
                       ~1000pt+, same phone-only oversight ScreenContainer
                       fixes for reading columns elsewhere. */}
+                  {sponsorV2 ? <ControlsFade /> : null}
                   <View style={styles.verdictBarWrap}>
                     {sponsorV2 ? (
-                      /* Tori's pills: ink Pass, green Connect. */
+                      /* The letterpress capsule: PASS on paper, CONNECT in ink. */
                       <DecisionPills
                         passLabel="Pass"
                         acceptLabel="Connect"
@@ -3018,7 +3033,9 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
-    bottom: Platform.OS === "ios" ? 28 : 20,
+    // Shared with the sponsor hero's stage math (it reserves this much
+    // above the stage's bottom edge) — one number, one source.
+    bottom: floatingActionsBottom(Platform.OS),
     paddingHorizontal: 24,
   },
   // Sponsor deck v2: the pills span the Figma's 16pt gutters (370 wide on
