@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
   cardAlone: { borderRadius: 24 },
   cardJoined: { borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
   initialWrap: {
-    ...StyleSheet.absoluteFillObject,
+    position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
     alignItems: "center",
     justifyContent: "center",
     paddingBottom: 120,
