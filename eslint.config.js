@@ -5,10 +5,21 @@ const expoConfig = require('eslint-config-expo/flat');
 module.exports = defineConfig([
   expoConfig,
   {
-    ignores: ['dist/*'],
+    // .expo/ holds generated router types and Metro's static error overlay
+    // scaffolding; neither is ours to lint.
+    ignores: ['dist/*', '.expo/*'],
   },
   {
     rules: {
+      // eslint-config-expo 57 promotes the React Compiler rules to errors.
+      // The app already compiles under the React Compiler (which bails out of
+      // any component it can't prove safe), so these flag existing patterns
+      // rather than new regressions. Kept visible as warnings; burn them down
+      // in a dedicated pass rather than inside an SDK upgrade.
+      'react-hooks/set-state-in-effect': 'warn',
+      'react-hooks/refs': 'warn',
+      'react-hooks/immutability': 'warn',
+      'react-hooks/purity': 'warn',
       // The lucide barrel re-exports all ~1,667 icons and Metro doesn't
       // tree-shake — one barrel import ships the whole catalog. Icons are
       // re-exported individually from components/ui/icons.ts; add new ones

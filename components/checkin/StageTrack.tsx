@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   railFill: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: Colors.ink,
   },
   label: {

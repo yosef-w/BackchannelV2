@@ -7,7 +7,7 @@
 // The sheet sells the DIFFERENCE, not the rule, and then closes the sale
 // in place. It's raised at peak intent (they just tapped "Get a Sponsor"
 // on a real role), so the copy names that role and that company, the
-// PlanLedger shows what changes as three struck-and-raised corrections,
+// PlanReel shows what changes as a three-beat reel on the cinema engine,
 // and PremiumCheckout puts the plans and the purchase button right
 // underneath. One sheet from desire to receipt; no second paywall.
 //
@@ -26,7 +26,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-import { PlanLedger } from "@/components/premium/PlanLedger";
+import { PlanReel } from "@/components/premium/PlanReel";
 import { PremiumCheckout } from "@/components/premium/PremiumCheckout";
 import {
   DismissibleSheet,
@@ -139,7 +139,7 @@ function GateSheet({
               </>
             )}
 
-            <PlanLedger onInk style={styles.ledger} />
+            <PlanReel style={styles.ledger} />
           </View>
 
           {/* Downstairs, in paper: the transaction, rising over the ink
@@ -168,7 +168,7 @@ function GateSheet({
 
 const styles = StyleSheet.create({
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     justifyContent: "flex-end",
     zIndex: 20,
   },

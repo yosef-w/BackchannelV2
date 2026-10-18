@@ -1,6 +1,6 @@
 import { Globe, Link2, X } from "@/components/ui/icons";
 import { isValidUrl } from "@/lib/validation";
-import { requireOptionalNativeModule } from "expo-modules-core";
+import { requireOptionalNativeModule } from "expo";
 import React, { useEffect, useState } from "react";
 import {
     StyleSheet,

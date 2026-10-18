@@ -1,7 +1,7 @@
 import { HomeView } from "@/components/HomeView";
 import { useShell } from "@/components/shell/ShellContext";
 import { useRouter } from "expo-router";
-import { useIsFocused } from "@react-navigation/native";
+import { useIsFocused } from "expo-router/react-navigation";
 import React from "react";
 
 export default function HomeTab() {

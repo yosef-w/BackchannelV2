@@ -8,7 +8,7 @@
 //
 // This is the deck's peak-intent moment: they just swiped right on a
 // specific role at a specific company. So the sheet is built around THAT
-// card — it shows it, shows what changes (PlanLedger), and the card is
+// card — it shows it, shows what changes (PlanReel), and the card is
 // HELD rather than dropped: "Keep going" parks it
 // (lib/heldLikes.ts), and a purchase, closed right here through
 // PremiumCheckout, sends it plus everything else held today (onUnlocked).
@@ -33,7 +33,7 @@ import {
 } from "react-native";
 import { SheetOverlay } from "@/components/ui/SheetOverlay";
 import { ConfirmPop } from "@/components/cinema/ConfirmPop";
-import { PlanLedger } from "@/components/premium/PlanLedger";
+import { PlanReel } from "@/components/premium/PlanReel";
 import { PremiumCheckout } from "@/components/premium/PremiumCheckout";
 import {
   DismissibleSheet,
@@ -197,7 +197,7 @@ function GateSheet({
                 : `Free accounts can express interest in ${DAILY_LIKE_LIMITS.free} roles a day.${card ? " This one is held for you." : ""} Members get ${DAILY_LIKE_LIMITS.premium}.`}
             </Text>
 
-            <PlanLedger onInk style={styles.ledger} />
+            <PlanReel style={styles.ledger} />
 
             {others.length > 0 && !heldFull && (
               <Text style={styles.others}>
@@ -232,7 +232,7 @@ function GateSheet({
 
 const styles = StyleSheet.create({
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     justifyContent: "flex-end",
     zIndex: 20,
   },

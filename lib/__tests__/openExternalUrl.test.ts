@@ -1,13 +1,15 @@
 import { Linking } from "react-native";
 import { openExternalUrl } from "../openExternalUrl";
 
-jest.mock("react-native", () => ({
-  Linking: { openURL: jest.fn().mockResolvedValue(undefined) },
-}));
-
 describe("openExternalUrl", () => {
+  const openURL = jest.spyOn(Linking, "openURL").mockResolvedValue(undefined);
+
   beforeEach(() => {
-    (Linking.openURL as jest.Mock).mockClear();
+    openURL.mockClear();
+  });
+
+  afterAll(() => {
+    openURL.mockRestore();
   });
 
   it("opens a plain https URL", () => {

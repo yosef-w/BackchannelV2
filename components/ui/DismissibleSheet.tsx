@@ -73,9 +73,13 @@ export function SheetScrollView({
   ...props
 }: ScrollViewProps & { children?: React.ReactNode }) {
   const ctx = useContext(SheetScrollContext);
+  // Capture only the shared value: the worklet closure is serialized to the UI
+  // runtime, and the context object also holds the NativeGesture, which
+  // worklets refuse to copy.
+  const scrollOffset = ctx?.scrollOffset;
   const onScroll = useAnimatedScrollHandler({
     onScroll: (e) => {
-      if (ctx) ctx.scrollOffset.value = e.contentOffset.y;
+      if (scrollOffset) scrollOffset.value = e.contentOffset.y;
     },
   });
   const scrollView = (

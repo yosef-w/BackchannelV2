@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { SafeAreaView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
+  cancelAnimation,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
@@ -8,6 +9,7 @@ import Animated, {
   withSequence,
   withTiming
 } from 'react-native-reanimated';
+import { useRouteFocused } from '@/lib/useRouteFocused';
 import { Colors, Fonts } from '@/constants/theme';
 import { PressableScale } from '@/components/ui/PressableScale';
 
@@ -84,8 +86,14 @@ const GHOST_CARDS: GhostCardSpec[] = [
 function GhostCard({ spec }: { spec: GhostCardSpec }) {
   const drift = useSharedValue(0);
   const appear = useSharedValue(0);
+  // Splash is the root of the pushed-not-replaced funnel, so it stays
+  // mounted under choose-role / intro / onboarding / sign-in. Only drift
+  // while actually on screen — UI-thread only, no haptics, but no reason
+  // to burn battery under four other screens either.
+  const isFocused = useRouteFocused();
 
   useEffect(() => {
+    if (!isFocused) return;
     appear.value = withDelay(500, withTiming(1, { duration: 1400 }));
     drift.value = withRepeat(
       withSequence(
@@ -94,7 +102,11 @@ function GhostCard({ spec }: { spec: GhostCardSpec }) {
       ),
       -1,
     );
-  }, [appear, drift, spec.durationMs]);
+    return () => {
+      cancelAnimation(drift);
+      cancelAnimation(appear);
+    };
+  }, [appear, drift, spec.durationMs, isFocused]);
 
   const animStyle = useAnimatedStyle(() => ({
     opacity: appear.value * spec.opacity,

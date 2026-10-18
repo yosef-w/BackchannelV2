@@ -32,7 +32,7 @@ export const API_BASE_URL =
  *   gated features will be enforced. Set to true when you are ready to test
  *   or ship paid subscriptions.
  */
-export const PREMIUM_ENABLED = false;
+export const PREMIUM_ENABLED = true;
 
 /**
  * SSO_ENABLED — Sign in with Apple / Google (docs/BACKEND_CHANGES_NEEDED.md §S)
@@ -198,4 +198,4 @@ export const APP_STORE_URL = `https://apps.apple.com/app/id${APP_STORE_ID}`;
 // records yet (docs/BACKEND_CHANGES_NEEDED.md §W #4/#5) — mail to this
 // address bounces until that's set up. Nothing else in the app changes when
 // it is.
-export const SUPPORT_EMAIL = "support@backchannel.app";
+export const SUPPORT_EMAIL = "support@backchannel.it.com";

@@ -293,7 +293,14 @@ export function ApplicantQuestionnaire({
   // every mount after the first, independent of ssoSession's lifetime.
   useEffect(() => {
     getPendingOnboardingRole().then((role) => {
-      if (role) registeredRef.current = true;
+      // Only meaningful for a signed-in user. The flag is per device, and a
+      // stale one (left by an account that was later deleted or logged
+      // out from) must not make a brand-new signup skip creating its
+      // account — that path ends in a 401 on the résumé upload and no
+      // account at all.
+      if (role && useAuthStore.getState().isAuthenticated) {
+        registeredRef.current = true;
+      }
     });
   }, []);
   // Closes the late-résumé harvest window: once the final save starts (or the
@@ -686,28 +693,38 @@ export function ApplicantQuestionnaire({
   // the real data afterward, identically for both signup paths.
   const completeSsoOnboardingMutation = useMutation({
     mutationFn: async () => {
-      return authApi.completeSsoOnboarding({
-        // Capitalized per the backend's validation — it rejects anything
-        // but exactly 'Applicant'/'Sponsor'.
-        role: "Applicant",
-        // The SSO exchange usually stored the name already, but Apple only
-        // sends it once ever — forward anything the flow captured so a
-        // questionnaire-entered name isn't lost.
-        ...(applicantData.firstName?.trim()
-          ? { first_name: applicantData.firstName.trim() }
-          : {}),
-        ...(applicantData.lastName?.trim()
-          ? { last_name: applicantData.lastName.trim() }
-          : {}),
-        skills: [],
-        insights: [],
-        work_preferences: [],
-      });
+      // Idempotent variant: a lost response after the server already
+      // attached the role must not strand the user on this step.
+      return authApi.completeSsoOnboardingIdempotent(
+        {
+          // Capitalized per the backend's validation — it rejects anything
+          // but exactly 'Applicant'/'Sponsor'.
+          role: "Applicant",
+          // The SSO exchange usually stored the name already, but Apple
+          // only sends it once ever — forward anything the flow captured
+          // so a questionnaire-entered name isn't lost.
+          ...(applicantData.firstName?.trim()
+            ? { first_name: applicantData.firstName.trim() }
+            : {}),
+          ...(applicantData.lastName?.trim()
+            ? { last_name: applicantData.lastName.trim() }
+            : {}),
+          skills: [],
+          insights: [],
+          work_preferences: [],
+        },
+        ssoSession?.userId ?? "",
+      );
     },
-    onSuccess: async () => {
+    onSuccess: async (data) => {
       // Guarded by handleResumeStep only ever calling this mutation when
       // ssoSession is set — but narrow the type here rather than assert.
       if (!ssoSession) return;
+      // The SSO exchange stored tokens with NO role (the account had none
+      // yet) — this response is the only place it ever arrives. Persist
+      // it, or the tabs shell falls back to guessing from URL params and
+      // the next cold start has no role at all.
+      await useAuthStore.getState().setRole(data.role);
       // This SSO user is authenticated with a still-mostly-empty profile —
       // flag it (awaited, durably) so splash's cold-start redirect routes
       // an interrupted signup back here instead of the dashboard. Cleared

@@ -35,8 +35,8 @@ import { Colors } from "@/constants/theme";
 import { getUnreadNotificationCount } from "@/lib/api";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
-import { clearLocalCheckInCache } from "@/utils/checkInStageCache";
-import { clearSponsorRequestCache } from "@/utils/sponsorRequestCache";
+import { clearPerUserDeviceState } from "@/lib/sessionTeardown";
+import { useRouteFocused } from "@/lib/useRouteFocused";
 import type { PublicProfileUserData } from "@/types/profiles";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -147,23 +147,32 @@ export default function TabsLayout() {
         // auth-loss direction instead of the auth-gain direction.
         router.dismissAll();
         router.replace("/splash");
-        // Single place every "session ended" path funnels through — manual
-        // logout, account deletion, AND a reactive 401 session expiry all
-        // flip isAuthenticated false and land here. Manual logout/delete
-        // used to clear these themselves (see ProfileView.tsx's old
-        // confirmLogout/handleAccountDeleted), which fixed the cross-
-        // account cache leak for those two paths but left the reactive-
-        // expiry path — arguably the MORE common way a device changes
-        // hands, since it needs no explicit action from the outgoing user
-        // — still leaking the previous account's cached matches, check-in
-        // stages, and sponsor-request state to whoever logs in next.
-        // Runs after the navigation above (not before), so the still-
-        // mounted authenticated screen tree isn't hit with a burst of
-        // now-401 refetches from queries that lost their cached data out
-        // from under them while still on screen.
+      }, 800);
+      // Single place every "session ended" path funnels through — manual
+      // logout, account deletion, AND a reactive 401 session expiry all
+      // flip isAuthenticated false and land here. Manual logout/delete
+      // used to clear these themselves (see ProfileView.tsx's old
+      // confirmLogout/handleAccountDeleted), which fixed the cross-
+      // account cache leak for those two paths but left the reactive-
+      // expiry path — arguably the MORE common way a device changes
+      // hands, since it needs no explicit action from the outgoing user
+      // — still leaking the previous account's cached matches, check-in
+      // stages, and sponsor-request state to whoever logs in next.
+      // Runs after the navigation (not before), so the still-mounted
+      // authenticated screen tree isn't hit with a burst of now-401
+      // refetches from queries that lost their cached data out from under
+      // them while still on screen.
+      //
+      // Deliberately NOT cancelled by the cleanup below: manual logout and
+      // deletion call router.replace("/splash") themselves a few ms after
+      // clearAuth(), which unmounts this shell and ran the cleanup before
+      // the 800ms elapsed — so the clearing it used to share a timer with
+      // never happened on exactly the two paths that are an explicit
+      // "someone else may use this phone next" signal. The cache is
+      // global, so the timer outliving the shell is fine.
+      setTimeout(() => {
         queryClient.clear();
-        clearLocalCheckInCache().catch(() => {});
-        clearSponsorRequestCache().catch(() => {});
+        clearPerUserDeviceState().catch(() => {});
       }, 800);
       return () => clearTimeout(timer);
     }
@@ -221,13 +230,18 @@ export default function TabsLayout() {
     }
   }, []);
 
+  // Only while this shell is the screen on top — a deep link (verify-email,
+  // reset-password) pushed over it otherwise keeps the poll running from
+  // underneath. App-background is already covered by react-query's
+  // focusManager for the other polls; this one is a bare interval.
+  const shellFocused = useRouteFocused();
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !shellFocused) return;
     fetchUnreadCount();
     // Poll every 60s so the badge stays reasonably fresh.
     const interval = setInterval(fetchUnreadCount, 60_000);
     return () => clearInterval(interval);
-  }, [isAuthenticated, fetchUnreadCount]);
+  }, [isAuthenticated, shellFocused, fetchUnreadCount]);
 
   // ── Referral check-in system ─────────────────────────────────────────────
   const [showApplicantCheckIn, setShowApplicantCheckIn] = useState(false);
@@ -293,6 +307,13 @@ export default function TabsLayout() {
 
       const type = data.type as string | undefined;
       trackPushNotificationTapped({ pushType: type });
+      // The notifications feed and the public-profile viewer are layout
+      // state, not routes: router.navigate() below switches the tab
+      // underneath them but leaves them covering it (tab bar hidden, the
+      // tap looks like it did nothing). Close both first; the generic
+      // fallback re-opens the feed deliberately.
+      setNotificationsOpen(false);
+      setPublicProfileData(null);
       if (
         type === "match" ||
         type === "referral" ||
@@ -489,7 +510,7 @@ export default function TabsLayout() {
                 Closing reveals the current tab untouched (previousView
                 bookkeeping is gone: the router state never changed). */}
             {notificationsOpen && (
-              <View style={StyleSheet.absoluteFillObject}>
+              <View style={StyleSheet.absoluteFill}>
                 <ScreenContainer variant="content" style={styles.overlayColumn}>
                   <NotificationsFeedView
                     onBack={() => {
@@ -517,7 +538,7 @@ export default function TabsLayout() {
                 MessagesView keep a live host view. */}
             {publicProfileData &&
               (userType === "sponsor" ? (
-                <View style={StyleSheet.absoluteFillObject}>
+                <View style={StyleSheet.absoluteFill}>
                   <ScreenContainer variant="content" style={styles.overlayColumn}>
                     <ApplicantPublicProfileView
                       userData={publicProfileData}
@@ -526,7 +547,7 @@ export default function TabsLayout() {
                   </ScreenContainer>
                 </View>
               ) : (
-                <View style={StyleSheet.absoluteFillObject}>
+                <View style={StyleSheet.absoluteFill}>
                   <ScreenContainer variant="content" style={styles.overlayColumn}>
                     <SponsorPublicProfileView
                       userData={publicProfileData}
@@ -580,7 +601,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.ink,
   },
-  // Overlays are StyleSheet.absoluteFillObject (full-bleed) — cap their
+  // Overlays are StyleSheet.absoluteFill (full-bleed) — cap their
   // inner content at the reading-column width on iPad instead of letting
   // NotificationsFeedView / the public-profile views stretch edge to edge.
   // flex:1 makes the cap fill the overlay's height too, since ScreenContainer

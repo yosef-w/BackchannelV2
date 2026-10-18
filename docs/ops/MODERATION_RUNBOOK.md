@@ -14,7 +14,7 @@
 | Thing a runbook usually assumes | Reality today |
 |---|---|
 | An alert reaches a human | **Only if `MODERATION_ALERT_EMAIL` is set in the prod DigitalOcean env.** Default is `""` (`settings.py:268`); when empty, `send_report_alert` logs a warning and returns. The report is still stored, nobody is told. Open item §W #4. **Verify it is set before launch.** |
-| Someone can receive that email | `backchannel.app` has **no MX record** today (§W #4). Even once the env var is set, an alert to `support@backchannel.app` bounces until MX exists. Until then, point `MODERATION_ALERT_EMAIL` at a real inbox (Yosef's Gmail) instead. |
+| Someone can receive that email | `backchannel.app` has **no MX record** today (§W #4). Even once the env var is set, an alert to `support@backchannel.it.com` bounces until MX exists. Until then, point `MODERATION_ALERT_EMAIL` at a real inbox (Yosef's Gmail) instead. |
 | The alert has the information needed to act | It contains only: report id, reason, reporter user id, reported user id (`templates/email/report_alert.html`). No names, no detail text, no conversation id, no link that works: `queue_url` is built as `{FRONTEND_URL}/admin/api/reports/` and `FRONTEND_URL` is the **marketing site** (`backchannelapp.netlify.app`), not the API host. The link is wrong. Use the API host (the value of `API_BASE_URL` in `constants/config.ts`) + `/admin/api/reports/`. |
 | A moderation admin tool | **A minimal one exists, JSON-only.** `GET /admin/api/reports/?status=OPEN` and `POST /admin/api/reports/<id>/resolve/` (body `{"deactivate_user": bool, "resolution_note": str}`), behind an admin cookie session (`/admin/login/`, user must have `users.is_admin = TRUE`). There is **no HTML reports page** (templates are only dashboard, login, personas, users). There is an HTML **Users** page (`/admin/users/`) with deactivate/reactivate. `django.contrib.admin` is **not installed**, so there is no Django-admin UI; do not look for one. |
 | A ban tool | **There is no "ban."** There is a reversible **deactivate** (`users.is_active = FALSE`). Nothing prevents the same person registering a new account with a different email. |
@@ -175,7 +175,7 @@ Deactivation preserves data; **deletion destroys it**. Steps:
 
 ## 8. User-notification templates
 
-Send by hand (from `support@backchannel.app`, once MX + a real mailbox exist; sending needs a verified Resend domain, receiving needs MX; these are different DNS records). Look up emails by `SELECT email FROM user_info.users WHERE user_id = '...'`. Never include the reporter's identity in anything sent to the reported user (Policy section 7: "The person you report is not told who reported them").
+Send by hand (from `support@backchannel.it.com`, once MX + a real mailbox exist; sending needs a verified Resend domain, receiving needs MX; these are different DNS records). Look up emails by `SELECT email FROM user_info.users WHERE user_id = '...'`. Never include the reporter's identity in anything sent to the reported user (Policy section 7: "The person you report is not told who reported them").
 
 **A. Reporter: report received and actioned**
 > Subject: About your report on BackChannel
@@ -206,7 +206,7 @@ Templates for CSAM cases are **not** to be sent without counsel.
 
 ## 9. Appeals
 
-- Channel: reply to the suspension email / `support@backchannel.app`. **No MX today** (§W #4), so a suspended user has no working way to reach you; fix MX before launch or appeals will silently bounce.
+- Channel: reply to the suspension email / `support@backchannel.it.com`. **No MX today** (§W #4), so a suspended user has no working way to reach you; fix MX before launch or appeals will silently bounce.
 - SLA suggestion: acknowledge within 2 business days, decide within 7 days.
 - Reviewer must be a different decision than the first if you are more than one person (the other founder reviews).
 - Process: pull the case file (section 6), read the user's statement, decide. To reinstate: `POST /admin/api/users/<user_id>/active/` `{"is_active": true}` (audited, restores their feed visibility). The **block stays** (reporter's safety) and is not reversed by reinstatement.

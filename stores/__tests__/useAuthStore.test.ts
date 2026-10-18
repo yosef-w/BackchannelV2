@@ -6,7 +6,8 @@
  *   2. clearAuth wipes both storage and state
  *   3. loadTokens: absent → unauthenticated; valid → authenticated;
  *      expired-but-refreshable → refreshed before isAuthenticated flips
- *   4. refreshAccessToken: success reuses the refresh token; only a genuine
+ *   4. refreshAccessToken: success stores the rotated refresh token (the
+ *      backend blacklists the old one); only a genuine
  *      401/403 (the refresh token itself rejected) clears auth. Everything
  *      else that can fail here — a network error, a 5xx, a malformed 200 —
  *      fails just that attempt and deliberately leaves auth intact, since
@@ -75,6 +76,21 @@ describe("setAuthTokens", () => {
     expect(store().role).toBe("Sponsor");
     expect(secureStorage.get("user_role")).toBe("Sponsor");
     expect(store().accessToken).toBe("acc-2");
+  });
+});
+
+describe("setRole", () => {
+  it("persists a role attached after the fact (SSO sign-up completing onboarding)", async () => {
+    // An SSO sign-up stores tokens with NO role; the role only arrives from
+    // the complete-onboarding response and must survive a cold start.
+    await store().setAuthTokens("acc-1", "ref-1");
+    expect(store().role).toBeNull();
+    expect(secureStorage.has("user_role")).toBe(false);
+
+    await store().setRole("Sponsor");
+    expect(store().role).toBe("Sponsor");
+    expect(secureStorage.get("user_role")).toBe("Sponsor");
+    expect(store().isAuthenticated).toBe(true);
   });
 });
 
@@ -183,7 +199,20 @@ describe("refreshAccessToken", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("stores the new access token and REUSES the existing refresh token", async () => {
+  it("stores the rotated refresh token when the backend returns one", async () => {
+    useAuthStore.setState({ refreshToken: "ref-1" });
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ access: "fresh-access", refresh: "ref-2" }),
+    });
+
+    expect(await store().refreshAccessToken()).toBe(true);
+    expect(store().accessToken).toBe("fresh-access");
+    expect(store().refreshToken).toBe("ref-2");
+    expect(secureStorage.get("refresh_token")).toBe("ref-2");
+  });
+
+  it("keeps the existing refresh token when the backend omits one", async () => {
     useAuthStore.setState({ refreshToken: "ref-1" });
     fetchMock.mockResolvedValueOnce({
       ok: true,
@@ -191,7 +220,6 @@ describe("refreshAccessToken", () => {
     });
 
     expect(await store().refreshAccessToken()).toBe(true);
-    expect(store().accessToken).toBe("fresh-access");
     expect(store().refreshToken).toBe("ref-1");
     expect(secureStorage.get("refresh_token")).toBe("ref-1");
   });

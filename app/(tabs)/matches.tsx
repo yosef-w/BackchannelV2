@@ -1,6 +1,6 @@
 import { MatchesView } from "@/components/MatchesView";
 import { useShell } from "@/components/shell/ShellContext";
-import { useIsFocused } from "@react-navigation/native";
+import { useIsFocused } from "expo-router/react-navigation";
 import React from "react";
 
 export default function MatchesTab() {

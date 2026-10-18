@@ -80,6 +80,15 @@ interface AuthState {
     refreshToken: string,
     role?: "Applicant" | "Sponsor",
   ) => Promise<void>;
+  /**
+   * Persist the role on its own. An SSO sign-up is authenticated with no
+   * role at all until the questionnaire's complete-onboarding call attaches
+   * one — that response is the only place the role ever arrives for those
+   * accounts, so it has to be stored here or the tabs shell is left
+   * guessing from URL params (and lands sponsors in the applicant app on
+   * the next cold start).
+   */
+  setRole: (role: "Applicant" | "Sponsor") => Promise<void>;
   /** Persist the has-password flag (SSO sign-in responses carry it). */
   setHasPassword: (hasPassword: boolean) => Promise<void>;
   /** Store the Expo push token after a successful registerDevice() call. */
@@ -133,6 +142,16 @@ export const useAuthStore = create<AuthState>((set) => ({
       isAuthenticated: true,
       ...(role !== undefined ? { role } : {}),
     });
+  },
+
+  setRole: async (role: "Applicant" | "Sponsor") => {
+    try {
+      await SecureStore.setItemAsync(ROLE_KEY, role);
+    } catch (error) {
+      console.warn("[Auth] Failed to persist role:", error);
+      Sentry.captureException(error, { tags: { flow: "auth_role_persist" } });
+    }
+    set({ role });
   },
 
   /**
@@ -326,8 +345,11 @@ export const useAuthStore = create<AuthState>((set) => ({
         return false;
       }
 
-      // Backend only returns a new access token — reuse the existing refresh token.
-      await useAuthStore.getState().setAuthTokens(data.access, refreshToken);
+      // The backend rotates refresh tokens and blacklists the old one, so the
+      // rotated token must replace ours or the next refresh is rejected.
+      await useAuthStore
+        .getState()
+        .setAuthTokens(data.access, data.refresh ?? refreshToken);
       return true;
     } catch (error) {
       // fetch() itself threw — offline, DNS, timeout, TLS blip. Not
