@@ -17,7 +17,7 @@
 // and a native dep would block OTA — runtimeVersion is fingerprint-based).
 
 import { Image } from "expo-image";
-import React from "react";
+import React, { useState } from "react";
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { Check, Flag } from "@/components/ui/icons";
@@ -25,8 +25,8 @@ import { Colors, Fonts } from "@/constants/theme";
 import { FontScale, hitSlopTo44 } from "@/lib/responsive";
 import { joinFacts } from "../dossierFacts";
 import type { ApplicantFacts } from "./model";
+import { heroPhotoPosition } from "./photoFraming";
 import { HERO_MIN } from "./stageLayout";
-
 
 interface ApplicantHeroCardProps {
   facts: ApplicantFacts;
@@ -50,6 +50,20 @@ export function ApplicantHeroCard({
 }: ApplicantHeroCardProps) {
   const { fontScale } = useWindowDimensions();
   const photo = (facts.photoUrl || "").trim();
+  // Framing: where to crop the photo so the face stays above the name
+  // overlay (photoFraming.ts). The card's width and the photo's real size
+  // (known once it loads) feed it; until then it assumes the square every
+  // upload is cropped to. Keyed to the url so a stale size never frames the
+  // next applicant's photo.
+  const [cardW, setCardW] = useState(0);
+  const [natural, setNatural] = useState<{ url: string; w: number; h: number } | null>(null);
+  const known = natural && natural.url === photo ? natural : null;
+  const position = heroPhotoPosition({
+    imgW: known?.w ?? 1,
+    imgH: known?.h ?? 1,
+    boxW: cardW || 370,
+    boxH: height,
+  });
   const subline = joinFacts([facts.currentTitle, facts.currentCompany, facts.location]);
 
   const a11y = [facts.name, subline, strength === "strong" ? "Strong match" : null]
@@ -62,6 +76,10 @@ export function ApplicantHeroCard({
       accessible
       accessibilityRole="summary"
       accessibilityLabel={a11y}
+      onLayout={(e) => {
+        const w = Math.round(e.nativeEvent.layout.width);
+        setCardW((prev) => (prev === w ? prev : w));
+      }}
     >
       {/* Keyed on the card's height: the card settles into its real height
           a few frames after it first mounts (estimate → measured stage →
@@ -80,7 +98,10 @@ export function ApplicantHeroCard({
             source={{ uri: photo }}
             style={StyleSheet.absoluteFill}
             contentFit="cover"
-            contentPosition="top center"
+            contentPosition={position}
+            onLoad={(e) =>
+              setNatural({ url: photo, w: e.source.width, h: e.source.height })
+            }
             cachePolicy="memory-disk"
             transition={150}
             accessibilityIgnoresInvertColors
