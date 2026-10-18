@@ -70,6 +70,15 @@ export const Colors = {
   danger: "#C81E1E",
   dangerLight: "#FEF2F2", // error/destructive tint fill (badges, warning cards) — was ad hoc "#FEF2F2"/"#FECACA" scattered across jobs/matches/profile
   warning: "#B45309", // in-progress/near-limit indicators (e.g. char counters) — was ad hoc "#D97706"
+  // ── Sponsor deck (2026-09 PM redesign, Tori's "Home & Matches" Figma) ──
+  // The one semantic "yes" color: Connect, fit checks, the strong-match
+  // badge. The Figma uses iOS system green (#34C759), but white on it is
+  // 2.2:1 — this is the nearest green that clears WCAG AA (5.0:1 on white,
+  // 4.5:1 text-on-tint on `goLight`).
+  go: "#15803D",
+  goLight: "#EAF6EE", // strong-match badge fill
+  // Achievement glyphs (the Figma's deep laurel red) — decorative only.
+  laurel: "#9B1C1C",
 } as const;
 
 /**
