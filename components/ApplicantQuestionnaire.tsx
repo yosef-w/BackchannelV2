@@ -70,6 +70,8 @@ import {
 } from "@/lib/api";
 import { authApi } from "@/lib/auth-api";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { PhotoFramingGuide } from "@/components/profile/PhotoFramingGuide";
+import { PhotoSponsorPreview } from "@/components/profile/PhotoSponsorPreview";
 import { useOnboardingStore } from "@/stores/useOnboardingStore";
 import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
 import { useToastStore } from "@/stores/useToastStore";
@@ -1489,6 +1491,19 @@ export function ApplicantQuestionnaire({
                         <Text style={styles.photoSkipText}>Skip for now</Text>
                       </TouchableOpacity>
                     )}
+                    {/* Tell them how sponsors will see the photo: the guide
+                        before they've picked one, the real card after — so
+                        a badly framed crop is caught here, not discovered
+                        by a sponsor. */}
+                    {selectedPhotoUri ? (
+                      <PhotoSponsorPreview
+                        uri={selectedPhotoUri}
+                        name={`${applicantData.firstName ?? ""} ${applicantData.lastName ?? ""}`}
+                        style={styles.photoPreview}
+                      />
+                    ) : (
+                      <PhotoFramingGuide style={styles.photoGuide} />
+                    )}
                   </View>
                 )}
 
@@ -2132,6 +2147,8 @@ const styles = StyleSheet.create({
   photoPickText: { fontSize: 16, fontWeight: "700", color: Colors.ink },
   photoSkipBtn: { marginTop: 4, paddingVertical: 8, paddingHorizontal: 16 },
   photoSkipText: { fontSize: 14, fontWeight: "600", color: Colors.faint },
+  photoGuide: { marginTop: 28, alignSelf: "stretch" },
+  photoPreview: { marginTop: 28 },
   inputContainer: { paddingTop: 8 },
   locationInputWrap: {
     flexDirection: "row",

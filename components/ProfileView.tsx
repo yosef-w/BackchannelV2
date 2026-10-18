@@ -40,7 +40,7 @@ import {
     View,
 } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
-import { PREMIUM_ENABLED } from "@/constants/config";
+import { PREMIUM_ENABLED, SPONSOR_DECK_V2 } from "@/constants/config";
 import {
     resetUser,
     trackAccountDeleted,
@@ -87,6 +87,13 @@ import {
 } from "@/constants/prompts";
 import { EditorScreen } from "./profile/EditorScreen";
 import { ProfileActionSheet } from "./profile/ProfileActionSheet";
+import { PhotoFramingGuide } from "./profile/PhotoFramingGuide";
+import {
+  DecisionPills,
+  SponsorApplicantCard,
+  buildApplicantFacts,
+  buildFitSummary,
+} from "./home/sponsor";
 import { useResumePipeline } from "./profile/useResumePipeline";
 import { EditProfileScreen } from "./profile/EditProfileScreen";
 import { HubRow } from "./profile/HubRow";
@@ -2402,6 +2409,11 @@ export function ProfileView({ userType }: ProfileViewProps) {
     },
   };
 
+  // The v2 hero card's inputs, derived from the same preview data. Cheap and
+  // pure (no role → no fit rows), so computed inline like previewCard.
+  const previewFacts = buildApplicantFacts(previewCard, previewCache.me);
+  const previewFit = buildFitSummary(previewFacts, null);
+
   return (
     <ScrollView
       style={styles.container}
@@ -2445,19 +2457,47 @@ export function ProfileView({ userType }: ProfileViewProps) {
           </View>
           {userType === "applicant" ? (
             <>
-              <ApplicantProfileCard
-                currentData={previewCard}
-                fullProfileCache={previewCache}
-                fullProfileLoading={false}
-              />
-              <View style={styles.ghostBar}>
-                <View style={styles.ghostAct}>
-                  <X color={Colors.faint} size={20} strokeWidth={2} />
-                </View>
-                <View style={styles.ghostAct}>
-                  <Heart color={Colors.faint} size={20} strokeWidth={2} />
-                </View>
-              </View>
+              {SPONSOR_DECK_V2 ? (
+                <>
+                  {/* Sponsors now see the hero card, so that is what this
+                      previews — the same component, fed from this screen's
+                      own data. No role, so it stands on the applicant
+                      alone, exactly as it does for a sponsor with no
+                      active role. */}
+                  <SponsorApplicantCard
+                    facts={previewFacts}
+                    role={null}
+                    fit={previewFit}
+                    layout="hero"
+                    photoHeight={280}
+                    tail={20}
+                  />
+                  <View style={styles.previewDecision} pointerEvents="none">
+                    <DecisionPills
+                      acceptLabel="Connect"
+                      onPass={() => {}}
+                      onAccept={() => {}}
+                      disabled
+                    />
+                  </View>
+                </>
+              ) : (
+                <>
+                  <ApplicantProfileCard
+                    currentData={previewCard}
+                    fullProfileCache={previewCache}
+                    fullProfileLoading={false}
+                  />
+                  <View style={styles.ghostBar}>
+                    <View style={styles.ghostAct}>
+                      <X color={Colors.faint} size={20} strokeWidth={2} />
+                    </View>
+                    <View style={styles.ghostAct}>
+                      <Heart color={Colors.faint} size={20} strokeWidth={2} />
+                    </View>
+                  </View>
+                </>
+              )}
               <Text style={styles.previewFootnote}>
                 The buttons are for show. This is your profile exactly as
                 sponsors see it.
@@ -2760,7 +2800,11 @@ export function ProfileView({ userType }: ProfileViewProps) {
         secondaryIcon={<ImageIcon color={Colors.ink} size={18} />}
         onSecondary={pickImage}
         onClose={() => setShowImagePickerModal(false)}
-      />
+      >
+        {/* Sponsors only ever see an applicant's photo in the hero card —
+            tell them how it's framed BEFORE they crop, not after. */}
+        {userType === "applicant" ? <PhotoFramingGuide /> : null}
+      </ProfileActionSheet>
 
       {/* LOGOUT CONFIRMATION MODAL */}
       <ProfileActionSheet
@@ -2957,6 +3001,8 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 24,
   },
+  // The disabled letterpress capsule under the previewed card.
+  previewDecision: { marginTop: 4, paddingHorizontal: 16, opacity: 0.9 },
   // ── PREVIEW tab chrome ────────────────────────────────────────────
   liveBand: {
     flexDirection: "row",
