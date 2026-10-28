@@ -25,7 +25,7 @@ const STATUS_WORD: Record<FitStatus, string> = {
 };
 
 function StatusMark({ status }: { status: FitStatus }) {
-  if (status === "match") return <Check size={20} color={Colors.go} strokeWidth={2.25} />;
+  if (status === "match") return <Check size={20} color={Colors.ink} strokeWidth={2.25} />;
   if (status === "stretch") return <TrendingUp size={16} color={Colors.warning} strokeWidth={2.25} />;
   return null;
 }

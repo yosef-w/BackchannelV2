@@ -11,16 +11,17 @@
 // — HomeView owns the ScrollView, gestures and the floating DecisionPills.
 // The 140pt tail spacer keeps those pills off the last section.
 
-import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import React, { useState } from "react";
+import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { Flag } from "@/components/ui/icons";
 import { Colors, Fonts } from "@/constants/theme";
-import { hitSlopTo44 } from "@/lib/responsive";
+import { hitSlopTo44, shouldStackForFontScale } from "@/lib/responsive";
 import type { SponsorCardLayout } from "@/constants/config";
 import { ApplicantHeroCard } from "./ApplicantHeroCard";
 import { ConnectorHeader } from "./ConnectorHeader";
 import { FitHeader } from "./FitHeader";
 import { FitTable } from "./FitTable";
+import { HeroLedger } from "./HeroLedger";
 import { heroStats, relativeAgo } from "./facts";
 import {
   AboutSection,
@@ -31,6 +32,14 @@ import {
   SkillsSection,
 } from "./ProfileSections";
 import { RoleContextRow } from "./RoleContextRow";
+import {
+  floatingActionsBottom,
+  heroOpeningMinHeight,
+  heroPhotoHeight,
+  LEDGER_ESTIMATE,
+  pillsReserve,
+  ROLE_ROW_ESTIMATE,
+} from "./stageLayout";
 import type { ApplicantFacts, FitSummary, RoleContext } from "./model";
 
 export interface SponsorApplicantCardProps {
@@ -38,6 +47,10 @@ export interface SponsorApplicantCardProps {
   role: RoleContext | null;
   fit: FitSummary;
   layout: SponsorCardLayout;
+  /** Measured height of HomeView's card stage (the box holding the scroll
+   * AND the floating pills). The hero opening sizes itself to the space
+   * above the pills; null until the first layout. */
+  stageHeight?: number | null;
   onOpenRoleSwitcher?: () => void;
   onViewProfile?: () => void;
   /** Opens the report sheet. Rendered as a quiet "Report <name>" link at
@@ -54,16 +67,37 @@ function SponsorApplicantCardImpl({
   role,
   fit,
   layout,
+  stageHeight = null,
   onOpenRoleSwitcher,
   onViewProfile,
   onReport,
 }: SponsorApplicantCardProps) {
+  const { height: windowHeight, fontScale } = useWindowDimensions();
   // connector/fit are framed around the sponsor's role — without one, fall
   // back to the hero, which stands on the applicant alone.
   const effective: SponsorCardLayout = role ? layout : "hero";
+  // The hero opening claims exactly the stage above the floating pills:
+  // the photo card gets what's left after the role row and ledger (both
+  // measured), so the ledger always ends a clear gap above the pills — on
+  // a phone of any size, an iPad, or at large text, where the pills stack
+  // and the reserve grows. A plain number, not flex. See stageLayout.ts.
+  const [roleH, setRoleH] = useState(ROLE_ROW_ESTIMATE);
+  const [ledgerH, setLedgerH] = useState(LEDGER_ESTIMATE);
+  const heroMinHeight = heroOpeningMinHeight(
+    stageHeight,
+    windowHeight,
+    pillsReserve(
+      floatingActionsBottom(Platform.OS),
+      shouldStackForFontScale(fontScale),
+    ),
+  );
+  const photoHeight = heroPhotoHeight(
+    heroMinHeight,
+    role ? roleH : 0,
+    ledgerH,
+  );
 
   let opening: React.ReactNode;
-  let showAbout = true;
   if (effective === "connector" && role) {
     opening = (
       <ConnectorHeader
@@ -83,34 +117,51 @@ function SponsorApplicantCardImpl({
     opening = (
       <View style={styles.heroWrap}>
         {role ? (
-          <RoleContextRow
-            role={role}
-            joined
-            eyebrow={facts.likedRole ? "Interested in your role" : "Suggested for your role"}
-            onPress={onOpenRoleSwitcher}
-          />
+          <View
+            onLayout={(e) => {
+              const h = Math.round(e.nativeEvent.layout.height);
+              setRoleH((prev) => (prev === h ? prev : h));
+            }}
+          >
+            <RoleContextRow
+              role={role}
+              joined
+              eyebrow={facts.likedRole ? "Interested in your role" : "Suggested for your role"}
+              onPress={onOpenRoleSwitcher}
+            />
+          </View>
         ) : null}
         <ApplicantHeroCard
           facts={facts}
+          height={photoHeight}
           joined={!!role}
           strength={fit.strength}
-          stats={heroStats(facts)}
           onReport={onReport}
         />
+        {/* The decisive numbers, on paper under a shorter photo card so
+            HomeView's floating pills land over whitespace, never on a
+            stat (they used to be a frosted grid pinned to the photo's
+            bottom edge — the pills' edge too). */}
+        <View
+          onLayout={(e) => {
+            const h = Math.round(e.nativeEvent.layout.height);
+            setLedgerH((prev) => (prev === h ? prev : h));
+          }}
+        >
+          <HeroLedger cells={heroStats(facts)} />
+        </View>
       </View>
     );
-    // Tori's Proposal 1 goes straight from the photo card to EXPERIENCE:
-    // the card's bio summary is the "about", and "cut anything that
-    // doesn't help them decide" is the brief. The full bio stays one tap
-    // away in the public profile.
-    showAbout = false;
   }
 
+  // Every layout, hero included: the bio summary used to ride on the hero's
+  // photo card in place of ABOUT; with the card trimmed to the person, the
+  // ABOUT section carries the bio again.
   const first = facts.firstName || facts.name;
   return (
     <View>
       {opening}
-      {showAbout ? <AboutSection firstName={first} bio={facts.bio} /> : null}
+      <AboutSection firstName={first} bio={facts.bio} />
       <ExperienceSection groups={facts.experienceGroups} />
       <EducationSection items={facts.education} />
       <AchievementsSection items={facts.achievements} />
