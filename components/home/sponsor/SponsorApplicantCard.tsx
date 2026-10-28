@@ -51,6 +51,12 @@ export interface SponsorApplicantCardProps {
    * AND the floating pills). The hero opening sizes itself to the space
    * above the pills; null until the first layout. */
   stageHeight?: number | null;
+  /** Fixes the hero photo's height instead of computing it from the stage —
+   * for the profile PREVIEW, which has no floating pills or role row to
+   * measure against and wants a typical sponsor-side size. */
+  photoHeight?: number;
+  /** Space under the last section (default: room for the floating pills). */
+  tail?: number;
   onOpenRoleSwitcher?: () => void;
   onViewProfile?: () => void;
   /** Opens the report sheet. Rendered as a quiet "Report <name>" link at
@@ -68,6 +74,8 @@ function SponsorApplicantCardImpl({
   fit,
   layout,
   stageHeight = null,
+  photoHeight: photoHeightOverride,
+  tail,
   onOpenRoleSwitcher,
   onViewProfile,
   onReport,
@@ -91,11 +99,9 @@ function SponsorApplicantCardImpl({
       shouldStackForFontScale(fontScale),
     ),
   );
-  const photoHeight = heroPhotoHeight(
-    heroMinHeight,
-    role ? roleH : 0,
-    ledgerH,
-  );
+  const photoHeight =
+    photoHeightOverride ??
+    heroPhotoHeight(heroMinHeight, role ? roleH : 0, ledgerH);
 
   let opening: React.ReactNode;
   if (effective === "connector" && role) {
@@ -179,7 +185,7 @@ function SponsorApplicantCardImpl({
           <Text style={styles.reportText}>Report {first}</Text>
         </Pressable>
       ) : null}
-      <View style={styles.tail} />
+      <View style={[styles.tail, tail !== undefined && { height: tail }]} />
     </View>
   );
 }

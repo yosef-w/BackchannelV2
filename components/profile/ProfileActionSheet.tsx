@@ -26,6 +26,9 @@ interface ProfileActionSheetProps {
   secondaryIcon?: React.ReactNode;
   onSecondary: () => void;
   onClose: () => void;
+  /** Optional content between the subtitle and the actions (e.g. the photo
+   * framing guide). */
+  children?: React.ReactNode;
 }
 
 /**
@@ -44,6 +47,7 @@ export function ProfileActionSheet({
   secondaryIcon,
   onSecondary,
   onClose,
+  children,
 }: ProfileActionSheetProps) {
   const { height } = useWindowDimensions();
   // Absolute px — a % maxHeight resolves against DismissibleSheet's
@@ -86,6 +90,8 @@ export function ProfileActionSheet({
           </View>
 
           <Text style={styles.modalSubtitle}>{subtitle}</Text>
+
+          {children ? <View style={{ marginTop: 16 }}>{children}</View> : null}
 
           <View style={{ gap: 12, marginTop: 12 }}>
             <TouchableOpacity
