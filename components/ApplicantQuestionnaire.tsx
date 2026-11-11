@@ -37,7 +37,6 @@ import Animated, {
   FadeInDown,
   useAnimatedStyle,
   withTiming,
-  ZoomIn,
 } from "react-native-reanimated";
 import { GOOGLE_PLACES_API_KEY } from "@/constants/config";
 import { AndroidInputFix, Colors, Fonts, Type } from "@/constants/theme";
@@ -1697,7 +1696,7 @@ export function ApplicantQuestionnaire({
           <BlurView intensity={90} tint="light" style={StyleSheet.absoluteFill}>
             <View style={styles.successContainer}>
               <Animated.View
-                entering={ZoomIn.delay(200).duration(600)}
+                entering={FadeIn.delay(200).duration(600)}
                 style={styles.successIconBox}
               >
                 <UserCheck color={Colors.ink} size={48} />

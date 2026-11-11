@@ -2,7 +2,7 @@
 // RevenueCat offering, phrased by lib/premiumPricing.ts, so a price or a
 // trial length is never hand-typed. Annual leads and carries the SAVE
 // chip; selection is an ink ring that eases in with a stamped check, on
-// the cinema engine's backOut curve, one light haptic tick. Quiet money.
+// the cinema engine's settle curve, one light haptic tick. Quiet money.
 //
 // Three states, one shape: skeleton rows while the offering loads, the
 // rows themselves, or a single retry line if the store couldn't answer.
@@ -23,7 +23,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { PACKAGE_TYPE, type PurchasesPackage } from "react-native-purchases";
-import { backOut } from "@/components/cinema/engine";
+import { settle } from "@/components/cinema/engine";
 import { Colors, Fonts, Radii } from "@/constants/theme";
 import {
   cadenceLabel,
@@ -137,7 +137,7 @@ function PlanRow({
     ),
   }));
   const check = useAnimatedStyle(() => {
-    const p = backOut(sel.value);
+    const p = settle(sel.value);
     return { opacity: Math.min(1, sel.value * 2), transform: [{ scale: p }] };
   });
   const dot = useAnimatedStyle(() => ({

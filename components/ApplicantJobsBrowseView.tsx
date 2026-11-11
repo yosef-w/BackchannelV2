@@ -50,7 +50,6 @@ import {
   View,
 } from "react-native";
 import Animated, {
-  ZoomIn,
   FadeIn,
   FadeInDown,
   FadeInUp,
@@ -386,7 +385,7 @@ function MarketplaceJobCard({
               ))}
             </View>
             {isDone ? (
-              <Animated.View entering={ZoomIn.duration(240)} style={styles.doneBadge}>
+              <Animated.View entering={FadeIn.duration(240)} style={styles.doneBadge}>
                 <Check size={10} color={Colors.muted} strokeWidth={3} />
                 <Text style={styles.doneBadgeText}>{doneLabel.toUpperCase()}</Text>
               </Animated.View>

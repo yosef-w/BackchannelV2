@@ -1,7 +1,7 @@
 // BroadcastMoment — the app's full-size success confirmation, extracted
 // from the create-job publish screen ("The Broadcast") so every milestone
 // moment speaks the same language: a one-shot clock drives the icon's
-// backOut arrival, three pulse rings broadcasting outward, a serif
+// settle arrival, three pulse rings broadcasting outward, a serif
 // headline landing word by word (italic-muted accent on the payoff word),
 // and a subtitle fading up — with the beats felt through the cinema
 // engine's haptics (success on the pop, soft ticks as rings fire).
@@ -25,7 +25,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { Colors, Fonts } from "@/constants/theme";
 import {
-  backOut,
+  settle,
   type CinemaBeat,
   easeOut,
   useCinemaHaptics,
@@ -111,7 +111,7 @@ export function BroadcastMoment({
   useCinemaHaptics(t, haptics ? BEATS : NO_BEATS);
 
   const iconStyle = useAnimatedStyle(() => {
-    const p = backOut(win(t.value, 0.046, 0.277));
+    const p = settle(win(t.value, 0.046, 0.277));
     return { opacity: Math.min(1, p * 2), transform: [{ scale: p }] };
   });
 

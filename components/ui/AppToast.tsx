@@ -17,7 +17,6 @@ import Animated, {
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
   withTiming,
 } from "react-native-reanimated";
 import { useToastStore } from "@/stores/useToastStore";
@@ -140,7 +139,7 @@ export function AppToast() {
         translateY.value = withTiming(-160, { duration: 180 });
         runOnJS(hideToast)();
       } else {
-        translateY.value = withSpring(0, { damping: 20, stiffness: 300 });
+        translateY.value = withTiming(0, { duration: 180 });
       }
     });
 

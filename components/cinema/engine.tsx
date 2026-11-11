@@ -40,7 +40,8 @@ import { Colors } from '@/constants/theme';
 export const easeOut = Easing.bezierFn(0.16, 1, 0.3, 1);
 export const easeIn = Easing.bezierFn(0.55, 0, 0.8, 0.2);
 export const easeInOut = Easing.bezierFn(0.65, 0, 0.35, 1);
-export const backOut = Easing.bezierFn(0.34, 1.56, 0.64, 1);
+// Settles without overshoot — the app's motion is calm, never springy.
+export const settle = Easing.bezierFn(0.22, 1, 0.36, 1);
 
 /** Windowed sub-progress: 0 before `a`, 1 after `b`, linear between. */
 export const win = (t: number, a: number, b: number): number => {

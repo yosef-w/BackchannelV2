@@ -32,7 +32,7 @@ import Animated, {
 import Svg, { Path } from "react-native-svg";
 import { Colors, Fonts } from "@/constants/theme";
 import {
-  backOut,
+  settle,
   type CinemaBeat,
   easeIn,
   easeOut,
@@ -125,7 +125,7 @@ function DeckCard({
   const style = useAnimatedStyle(() => {
     const tv = t.value;
     const inP = easeOut(win(tv, 0.02, 0.1));
-    const p = backOut(win(tv, SPREAD_A, SPREAD_B));
+    const p = settle(win(tv, SPREAD_A, SPREAD_B));
     const x = card.packed + (card.spread - card.packed) * p;
     const rot = card.r + (card.rs - card.r) * p;
     return {
@@ -204,7 +204,7 @@ function CelebrationScene({ onDone }: { onDone: () => void }) {
   // The second door: the marketplace tile springs in on the right as
   // the deck clears left.
   const marketTile = useAnimatedStyle(() => {
-    const p = backOut(win(t.value, 0.456, 0.632));
+    const p = settle(win(t.value, 0.456, 0.632));
     return {
       opacity: Math.min(1, p * 2),
       transform: [
@@ -216,7 +216,7 @@ function CelebrationScene({ onDone }: { onDone: () => void }) {
   });
 
   const chipDeck = useAnimatedStyle(() => {
-    const p = backOut(win(t.value, 0.441, 0.588));
+    const p = settle(win(t.value, 0.441, 0.588));
     return {
       opacity: Math.min(1, p * 2),
       transform: [{ scale: 0.7 + p * 0.3 }],
@@ -224,7 +224,7 @@ function CelebrationScene({ onDone }: { onDone: () => void }) {
   });
 
   const chipMarket = useAnimatedStyle(() => {
-    const p = backOut(win(t.value, 0.515, 0.662));
+    const p = settle(win(t.value, 0.515, 0.662));
     return {
       opacity: Math.min(1, p * 2),
       transform: [{ scale: 0.7 + p * 0.3 }],
