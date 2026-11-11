@@ -27,13 +27,13 @@ import {
 } from "react-native-gesture-handler";
 import type { ScrollViewProps } from "react-native";
 import Animated, {
+  Easing,
   runOnJS,
   SlideInDown,
   SlideOutDown,
   useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
   withTiming,
   type SharedValue,
 } from "react-native-reanimated";
@@ -171,7 +171,7 @@ export function DismissibleSheet({
         },
       );
     } else {
-      translateY.value = withSpring(0, { damping: 20, stiffness: 220 });
+      translateY.value = withTiming(0, { duration: 200, easing: Easing.out(Easing.cubic) });
     }
   };
 

@@ -36,7 +36,7 @@ import { PressableScale } from '@/components/ui/PressableScale';
 import { hitSlopTo44 } from '@/lib/responsive';
 import {
   ActProgress,
-  backOut,
+  settle,
   type CinemaBeat,
   CinemaCaption,
   easeIn,
@@ -212,7 +212,7 @@ export function SponsorCinema({
 
   const vouchStamp = useAnimatedStyle(() => {
     const t = master.value;
-    const p = backOut(win(t, 0.165, 0.19));
+    const p = settle(win(t, 0.165, 0.19));
     return { opacity: p, transform: [{ scale: 0.7 + p * 0.3 }, { rotate: '-6deg' }] };
   });
 
@@ -234,8 +234,6 @@ export function SponsorCinema({
 
   const cardA = useAnimatedStyle(() => {
     const t = master.value;
-    const stampP = win(t, 0.356, 0.374);
-    const recoil = Math.sin(stampP * Math.PI) * 0.015;
     const windup = easeOut(win(t, 0.368, 0.377));
     const fly = easeIn(win(t, 0.377, 0.437));
     const arc = fly * (1 - fly) * 4;
@@ -245,22 +243,20 @@ export function SponsorCinema({
         { translateX: -fly * (W * 0.95) },
         { translateY: -windup * 6 - arc * 34 },
         { rotate: `${-2 - fly * 17}deg` },
-        { scale: 1 - recoil },
+        { scale: 1 },
       ],
     };
   });
 
   const passStamp = useAnimatedStyle(() => {
     const t = master.value;
-    const p = backOut(win(t, 0.356, 0.374));
-    return { opacity: p, transform: [{ scale: 0.6 + p * 0.4 }] };
+    const p = settle(win(t, 0.356, 0.374));
+    return { opacity: p, transform: [{ scale: 0.92 + p * 0.08 }] };
   });
 
   const cardB = useAnimatedStyle(() => {
     const t = master.value;
     const promote = easeOut(win(t, 0.419, 0.451));
-    const stampP = win(t, 0.447, 0.465);
-    const recoil = Math.sin(stampP * Math.PI) * 0.015;
     const windup = easeOut(win(t, 0.459, 0.468));
     const fly = easeIn(win(t, 0.468, 0.528));
     const arc = fly * (1 - fly) * 4;
@@ -270,14 +266,14 @@ export function SponsorCinema({
         { translateY: 8 - promote * 8 - windup * 6 - arc * 34 },
         { translateX: fly * (W * 0.95) },
         { rotate: `${3 - promote * 3 + fly * 15}deg` },
-        { scale: 0.97 + promote * 0.03 - recoil },
+        { scale: 0.97 + promote * 0.03 },
       ],
     };
   });
 
   const connectStamp = useAnimatedStyle(() => {
     const t = master.value;
-    const p = backOut(win(t, 0.447, 0.465));
+    const p = settle(win(t, 0.447, 0.465));
     return { opacity: p, transform: [{ scale: 0.6 + p * 0.4 }] };
   });
 
@@ -327,13 +323,13 @@ export function SponsorCinema({
 
   const avatarLeft = useAnimatedStyle(() => {
     const t = master.value;
-    const p = backOut(win(t, 0.545, 0.601));
+    const p = settle(win(t, 0.545, 0.601));
     return { transform: [{ translateX: -AV_APART + p * (AV_APART - AV_MEET) }] };
   });
 
   const avatarRight = useAnimatedStyle(() => {
     const t = master.value;
-    const p = backOut(win(t, 0.545, 0.601));
+    const p = settle(win(t, 0.545, 0.601));
     return { transform: [{ translateX: AV_APART - p * (AV_APART - AV_MEET) }] };
   });
 
@@ -342,8 +338,8 @@ export function SponsorCinema({
   // themselves, so the "two people meeting" shape stays intact.
   const avatarLeftLabel = useAnimatedStyle(() => {
     const t = master.value;
-    const meetP = backOut(win(t, 0.545, 0.601));
-    const revealP = backOut(win(t, 0.601, 0.619));
+    const meetP = settle(win(t, 0.545, 0.601));
+    const revealP = settle(win(t, 0.601, 0.619));
     const shift = win(t, 0.706, 0.755);
     return {
       opacity: revealP * (1 - shift),
@@ -353,8 +349,8 @@ export function SponsorCinema({
 
   const avatarRightLabel = useAnimatedStyle(() => {
     const t = master.value;
-    const meetP = backOut(win(t, 0.545, 0.601));
-    const revealP = backOut(win(t, 0.601, 0.619));
+    const meetP = settle(win(t, 0.545, 0.601));
+    const revealP = settle(win(t, 0.601, 0.619));
     const shift = win(t, 0.706, 0.755);
     return {
       opacity: revealP * (1 - shift),
@@ -374,7 +370,7 @@ export function SponsorCinema({
 
   const matchBadge = useAnimatedStyle(() => {
     const t = master.value;
-    const p = backOut(win(t, 0.601, 0.619));
+    const p = settle(win(t, 0.601, 0.619));
     const shift = win(t, 0.706, 0.755);
     return { opacity: p * (1 - shift), transform: [{ scale: p }] };
   });
@@ -391,7 +387,7 @@ export function SponsorCinema({
 
   const companyTile = useAnimatedStyle(() => {
     const t = master.value;
-    const p = backOut(win(t, 0.713, 0.762));
+    const p = settle(win(t, 0.713, 0.762));
     return {
       opacity: p,
       transform: [{ translateX: 90 + (1 - p) * 60 }, { scale: 0.8 + p * 0.2 }],
@@ -410,7 +406,7 @@ export function SponsorCinema({
 
   const referredChip = useAnimatedStyle(() => {
     const t = master.value;
-    const p = backOut(win(t, 0.818, 0.85));
+    const p = settle(win(t, 0.818, 0.85));
     return {
       opacity: p,
       transform: [{ scale: 0.7 + p * 0.3 }, { translateY: (1 - p) * 10 }],

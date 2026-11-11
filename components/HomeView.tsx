@@ -70,6 +70,7 @@ import {
   View,
 } from "react-native";
 import Animated, {
+  FadeIn,
   FadeInDown,
   FadeInUp,
   useAnimatedScrollHandler,
@@ -78,7 +79,6 @@ import Animated, {
   withRepeat,
   withSequence,
   withTiming,
-  ZoomIn,
 } from "react-native-reanimated";
 import { useJobsStore } from "@/stores/useJobsStore";
 import { transformMyJobRow } from "@/components/jobs/jobTransforms";
@@ -94,7 +94,6 @@ import { FullBioModal } from "./home/FullBioModal";
 import { GetSponsorModal } from "./home/GetSponsorModal";
 import { JobCardContent } from "./home/JobCardContent";
 import { PlateDeck } from "./home/plates/PlateDeck";
-import { DecisionStamp, STAMP_MS } from "./home/DecisionStamp";
 import { VerdictBar } from "./home/VerdictBar";
 import {
   buildApplicantPlates,
@@ -603,9 +602,6 @@ export function HomeView({
     (index: number, count: number) => setPlateProgress({ index, count }),
     [],
   );
-  // The commit beat: the accept verb stamps the card (DecisionStamp) for
-  // the moment before it lifts away.
-  const [stamp, setStamp] = useState<string | null>(null);
   // Pulsing LIVE dot for the "No Applicants Yet" empty state. Loops
   // a gentle opacity oscillation so the indicator reads as active /
   // running, the way streaming UIs and status dashboards do it.
@@ -1470,10 +1466,6 @@ export function HomeView({
 
     setActionPending(true);
     if (isAccept) {
-      // The stamp lands the instant the verb is pressed — a physical mark,
-      // not a network receipt — and clears itself as the card lifts.
-      setStamp(userType === "sponsor" ? "CONNECTED" : "INTERESTED");
-      setTimeout(() => setStamp(null), STAMP_MS + 900);
       // Call like API when accepting
       let didMatch = false;
       let jobGone = false;
@@ -2669,7 +2661,6 @@ export function HomeView({
                 </TouchableOpacity>
               )}
 
-              {stamp && <DecisionStamp label={stamp} />}
 
               {isAlreadyLiked ? (
                 /* "Already seen" overlay — replaces the floating Pass/
@@ -2798,7 +2789,7 @@ export function HomeView({
             />
             <View style={styles.overlayCenter} pointerEvents="none">
               <Animated.View
-                entering={ZoomIn.duration(400)}
+                entering={FadeIn.duration(400)}
                 style={styles.celebrationCard}
               >
                 {/* Quiet tick, not success — this fires up to 10x/day. */}

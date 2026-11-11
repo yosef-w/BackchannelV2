@@ -20,7 +20,7 @@ import Animated, {
 import Svg, { Path, Rect } from "react-native-svg";
 import {
   ActProgress,
-  backOut,
+  settle,
   CinemaCaption,
   easeIn,
   easeOut,
@@ -142,7 +142,7 @@ function DeckBeat({ master }: { master: SharedValue<number> }) {
     width: `${easeOut(bw(master.value, 0, DECK.strike[0], DECK.strike[1])) * 100}%`,
   }));
   const five = useAnimatedStyle(() => {
-    const p = backOut(bw(master.value, 0, DECK.five[0], DECK.five[1]));
+    const p = settle(bw(master.value, 0, DECK.five[0], DECK.five[1]));
     return { opacity: Math.min(1, p * 2), transform: [{ scale: 0.6 + p * 0.4 }] };
   });
   return (
@@ -171,10 +171,10 @@ function StampCard({
   stampAt: number;
 }) {
   const ink = useAnimatedStyle(() => {
-    const p = backOut(bw(master.value, 0, stampAt, stampAt + 0.08));
+    const p = settle(bw(master.value, 0, stampAt, stampAt + 0.08));
     return {
       opacity: Math.min(1, p * 2),
-      transform: [{ scale: 1.7 - p * 0.7 }, { rotate: "-8deg" }],
+      transform: [{ scale: 0.92 + p * 0.08 }, { rotate: "-8deg" }],
     };
   });
   return (
@@ -200,7 +200,7 @@ function LettersBeat({ master }: { master: SharedValue<number> }) {
     return { opacity: o };
   });
   const shackle = useAnimatedStyle(() => {
-    const p = backOut(bw(master.value, 1, LETTERS.lockOpen[0], LETTERS.lockOpen[1]));
+    const p = settle(bw(master.value, 1, LETTERS.lockOpen[0], LETTERS.lockOpen[1]));
     return { transform: [{ translateY: -5 * p }, { rotate: `${-14 * p}deg` }] };
   });
   return (
@@ -272,7 +272,7 @@ function ListingBeat({ master }: { master: SharedValue<number> }) {
   });
   const pill = useAnimatedStyle(() => {
     const t = master.value;
-    const inP = backOut(bw(t, 2, LISTING.pillIn[0], LISTING.pillIn[1]));
+    const inP = settle(bw(t, 2, LISTING.pillIn[0], LISTING.pillIn[1]));
     // A press: down for the first half of the window, back up for the second.
     const half = (LISTING.press[0] + LISTING.press[1]) / 2;
     const press =
@@ -286,7 +286,7 @@ function ListingBeat({ master }: { master: SharedValue<number> }) {
     opacity: 1 - bw(master.value, 2, LISTING.labelOut[0], LISTING.labelOut[1]),
   }));
   const tick = useAnimatedStyle(() => {
-    const p = backOut(bw(master.value, 2, LISTING.tick[0], LISTING.tick[1]));
+    const p = settle(bw(master.value, 2, LISTING.tick[0], LISTING.tick[1]));
     return { opacity: Math.min(1, p * 2), transform: [{ scale: 0.5 + p * 0.5 }] };
   });
   return (

@@ -810,7 +810,7 @@ export function SponsorQuestionnaire({
             <ScreenContainer variant="form">
             <Animated.View
               key={currentQuestion}
-              layout={Layout.springify()}
+              layout={Layout.duration(250)}
               entering={FadeInDown.duration(500)}
             >
               <Text style={styles.questionText}>{question.question}</Text>

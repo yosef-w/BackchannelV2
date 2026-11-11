@@ -12,7 +12,6 @@ import Animated, {
   useSharedValue,
   withSequence,
   withTiming,
-  ZoomIn,
 } from "react-native-reanimated";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import { Colors, Fonts, Type } from "@/constants/theme";
@@ -102,7 +101,7 @@ export function MatchCelebrationModal({
 
         <View style={styles.matchModalOverlay}>
           <Animated.View
-            entering={ZoomIn.springify().damping(14).stiffness(180)}
+            entering={FadeInUp.duration(320)}
             style={styles.matchCard}
           >
             {/* Eyebrow — the caps voice, no pill */}
