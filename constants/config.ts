@@ -73,6 +73,17 @@ export const PLATES_ENABLED = true;
 export const SPONSOR_DECK_V2 = true;
 
 /**
+ * APPLICANT_DECK_V2 — the "role brief" redesign of the applicant's job card
+ * (components/home/applicant), the mirror of SPONSOR_DECK_V2. true: the
+ * applicant deck renders JobBriefCard in a single scroll — an ink role card,
+ * the same ledger and Pass / Interested capsule the sponsor deck uses, a
+ * short read, and the long description behind a disclosure; no plate row,
+ * no gauge. false: the plates deck exactly as before — a one-line kill
+ * switch.
+ */
+export const APPLICANT_DECK_V2 = true;
+
+/**
  * SPONSOR_CARD_LAYOUT — which of the Figma's three card openings leads the
  * sponsor card. All three share everything below the opening (about,
  * experience, education, achievements, skills, prompts).
