@@ -182,7 +182,7 @@ export function DeckDoneCard({
       {heldCount > 0 && (
         <View style={styles.heldPanel}>
           <View style={styles.heldHeader}>
-            <Text style={styles.heldEyebrow}>HELD FOR YOU</Text>
+            <Text style={styles.heldEyebrow}>SAVED FOR YOU</Text>
             <View style={styles.heldBadge}>
               <Lock color={Colors.paper} size={9} strokeWidth={2.6} />
               <Text style={styles.heldBadgeText}>MEMBERS</Text>
@@ -213,7 +213,7 @@ export function DeckDoneCard({
             haptic={null}
             icon={<Lock color={Colors.paper} size={18} strokeWidth={2.2} />}
           />
-          <Text style={styles.gateEyebrow}>MEMBERS ONLY</Text>
+          <Text style={styles.gateEyebrow}>PREMIUM</Text>
           <Text style={styles.gateTitle}>
             {DAILY_LIKE_LIMITS.premium} a day, as a{" "}
             <Text style={styles.gateTitleAccent}>member.</Text>

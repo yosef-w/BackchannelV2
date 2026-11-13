@@ -79,7 +79,7 @@ export function CreateJobInsightsScreen({
               cards below are the interactive objects on this screen, and
               a card introducing more cards diluted them (PM note). */}
           <View style={styles.payoffIntro}>
-            <Text style={styles.payoffTitle}>The part only you can write</Text>
+            <Text style={styles.payoffTitle}>Add your own insight</Text>
             <Text style={styles.payoffSubtitle}>
               Every other field on {jobTitle || "this listing"} could come
               from the job posting. Answer a prompt or two about what it&apos;s

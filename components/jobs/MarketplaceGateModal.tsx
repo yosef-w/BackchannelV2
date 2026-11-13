@@ -98,7 +98,7 @@ function GateSheet({
           {/* Upstairs, in ink: the members' side. The headline names the
               role; the ledger shows what changes, paper on ink. */}
           <View style={[styles.pitch, sheetColumn]}>
-            <Text style={styles.eyebrow}>MEMBERS ONLY</Text>
+            <Text style={styles.eyebrow}>PREMIUM</Text>
 
             {intent === "request" ? (
               <>

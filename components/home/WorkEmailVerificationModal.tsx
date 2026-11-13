@@ -168,12 +168,12 @@ export function WorkEmailVerificationModal({
             <ConfirmPop size={72} />
             <Text style={styles.emailVerifTitle}>Verified. You&apos;re in.</Text>
             <Text style={styles.verifiedBeatSub}>
-              Your applicant deck is unlocked.
+              You can now see applicants.
             </Text>
           </View>
         ) : (
           <>
-        <Text style={styles.emailVerifEyebrow}>SPONSORS ONLY</Text>
+        <Text style={styles.emailVerifEyebrow}>FOR SPONSORS</Text>
         <Text style={styles.emailVerifTitle}>
           Verify your <Text style={styles.emailVerifTitleEm}>work email.</Text>
         </Text>
@@ -348,7 +348,7 @@ export function WorkEmailVerificationModal({
             const workEmail = pendingWorkEmail ?? profileData?.personal?.workEmail;
             if (!workEmail) {
               setEmailVerifStatus({
-                text: "We don't have a work email on file. Tap 'Update it' to add one.",
+                text: "We don't have your work email. Tap 'Update it' to add one.",
                 tone: "error",
               });
               return;

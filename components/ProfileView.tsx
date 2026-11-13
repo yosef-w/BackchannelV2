@@ -2628,7 +2628,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
             </Text>
             <View style={cardStyles.kLedgerValueWrap}>
               <Text style={cardStyles.kLedgerValue}>
-                {resumeLastUpdated ? "On file" : "Not uploaded yet"}
+                {resumeLastUpdated ? "Uploaded" : "Not uploaded yet"}
               </Text>
               {!!resumeLastUpdated && (
                 <Text style={cardStyles.kLedgerValueSub} numberOfLines={1}>

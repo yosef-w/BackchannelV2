@@ -1092,7 +1092,7 @@ export function ApplicantJobsBrowseView() {
                   context={
                     membersCue
                       ? {
-                          title: "Members only",
+                          title: "Premium",
                           sub: "Unlock to express interest in sponsored roles",
                           icon: (
                             <Lock size={13} color={Colors.ink} strokeWidth={2.5} />
@@ -1122,7 +1122,7 @@ export function ApplicantJobsBrowseView() {
                             sub: "Members request on every role",
                           }
                         : {
-                            title: "Members only",
+                            title: "Premium",
                             sub: "Unlock to request on every role",
                             icon: (
                               <Lock size={13} color={Colors.ink} strokeWidth={2.5} />

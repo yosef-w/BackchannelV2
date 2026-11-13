@@ -67,7 +67,7 @@ export function PremiumSheet({
           <SheetScrollView showsVerticalScrollIndicator={false}>
             {/* Upstairs, in ink: the members' side. */}
             <View style={[styles.pitch, sheetColumn]}>
-              <Text style={styles.eyebrow}>MEMBERS ONLY</Text>
+              <Text style={styles.eyebrow}>PREMIUM</Text>
 
               {heldCount > 0 ? (
                 <>
