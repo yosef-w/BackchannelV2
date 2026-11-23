@@ -278,6 +278,9 @@ function RootLayout() {
                     gestureEnabled: false,
                   }}
                 />
+                {/* Add the other side to an account (docs/DUAL_SIDES.md) —
+                  pushed over the shell from the Account tab. */}
+                <Stack.Screen name="add-side" options={{ headerShown: false }} />
                 {/* Deep-link target for `backchannelv2://verify-email?token=…` */}
                 <Stack.Screen
                   name="verify-email"

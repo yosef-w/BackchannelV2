@@ -1007,3 +1007,28 @@ export function trackApiError(args: {
     status_or_reason: args.statusOrReason,
   });
 }
+
+// ─── Dual sides (docs/DUAL_SIDES.md) ────────────────────────────────────────
+
+/** The account's active side changed (the switcher, or a notification tap). */
+export function trackSideSwitched(props: {
+  to: AnalyticsUserType;
+  source: "switcher" | "account" | "notification" | "added";
+}): void {
+  safeTrack("Side Switched", { to: props.to, source: props.source });
+}
+
+/** The add-a-side screen opened. */
+export function trackAddSideViewed(side: AnalyticsUserType): void {
+  safeTrack("Add Side Viewed", { side });
+}
+
+/** A second side was added to the account. */
+export function trackSideAdded(side: AnalyticsUserType, preview = false): void {
+  safeTrack("Side Added", { side, preview });
+}
+
+/** Adding a second side failed. */
+export function trackAddSideFailed(side: AnalyticsUserType, reason: string): void {
+  safeTrack("Add Side Failed", { side, reason });
+}

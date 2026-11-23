@@ -9,10 +9,13 @@ import { Sentry } from "@/lib/sentry";
 // which is also what keeps this in sync with lib/api.ts's copy instead of
 // two independent literals silently drifting apart.
 import { API_BASE_URL } from "@/constants/config";
+import { parseRoles, type Role } from "@/lib/sides";
 
 const ACCESS_TOKEN_KEY = "access_token";
 const REFRESH_TOKEN_KEY = "refresh_token";
 const ROLE_KEY = "user_role";
+/** JSON array of every side the account holds (docs/DUAL_SIDES.md). */
+const ROLES_KEY = "user_roles";
 const HAS_PASSWORD_KEY = "has_password";
 
 /**
@@ -41,14 +44,37 @@ function isTokenExpired(token: string): boolean {
   return Date.now() >= (exp - 30) * 1000;
 }
 
+/** `roles` with `role` in it, in the stable order parseRoles gives. */
+function withRole(roles: Role[], role: Role): Role[] {
+  return roles.includes(role) ? roles : parseRoles([...roles, role]);
+}
+
+/** Best-effort: a failed write only costs the second side until the next
+ * profile fetch restores it. */
+function persistRoles(roles: Role[]): void {
+  SecureStore.setItemAsync(ROLES_KEY, JSON.stringify(roles)).catch((error) => {
+    console.warn("[Auth] Failed to persist roles:", error);
+  });
+}
+
 /**
  * 🛡️ Auth state interface
  */
 interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
-  /** Role returned by the login endpoint (PR #19). Null until first login. */
-  role: "Applicant" | "Sponsor" | null;
+  /**
+   * The ACTIVE side — the one the whole app is showing. It starts as the
+   * role the login endpoint returns (PR #19; null until first login) and,
+   * for an account that holds both sides, changes on `switchRole`.
+   */
+  role: Role | null;
+  /**
+   * Every side this account holds. One entry for almost everyone; two once
+   * a sponsor adds a job search or an applicant adds sponsoring. Always
+   * contains `role` when `role` is set.
+   */
+  roles: Role[];
   /**
    * Whether this account has a password set. False only for a pure-SSO
    * account (backend's `has_password` on the SSO response) — drives the
@@ -89,6 +115,18 @@ interface AuthState {
    * the next cold start).
    */
   setRole: (role: "Applicant" | "Sponsor") => Promise<void>;
+  /**
+   * Replace the list of sides the account holds — from the profile fetch,
+   * or after a side is added. The active side is kept when the new list
+   * still contains it, else it falls to the first one listed.
+   */
+  setRoles: (roles: Role[]) => Promise<void>;
+  /**
+   * Make another held side the active one. Returns false (and changes
+   * nothing) when the account doesn't hold it. Only the store flips here;
+   * lib/switchSide owns the rest of a switch (caches, profile, navigation).
+   */
+  switchRole: (role: Role) => Promise<boolean>;
   /** Persist the has-password flag (SSO sign-in responses carry it). */
   setHasPassword: (hasPassword: boolean) => Promise<void>;
   /** Store the Expo push token after a successful registerDevice() call. */
@@ -105,6 +143,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   accessToken: null,
   refreshToken: null,
   role: null,
+  roles: [],
   hasPassword: true,
   deviceToken: null,
   isAuthenticated: false,
@@ -140,8 +179,13 @@ export const useAuthStore = create<AuthState>((set) => ({
       accessToken,
       refreshToken,
       isAuthenticated: true,
-      ...(role !== undefined ? { role } : {}),
+      // A role here means a NEW session (login or registration), never a
+      // refresh — so the sides start over from that one role instead of
+      // inheriting whatever a previous account on this device held. A
+      // second side comes back with the first profile fetch.
+      ...(role !== undefined ? { role, roles: [role] } : {}),
     });
+    if (role !== undefined) persistRoles(useAuthStore.getState().roles);
   },
 
   setRole: async (role: "Applicant" | "Sponsor") => {
@@ -151,7 +195,38 @@ export const useAuthStore = create<AuthState>((set) => ({
       console.warn("[Auth] Failed to persist role:", error);
       Sentry.captureException(error, { tags: { flow: "auth_role_persist" } });
     }
+    set((state) => ({ role, roles: withRole(state.roles, role) }));
+    persistRoles(useAuthStore.getState().roles);
+  },
+
+  setRoles: async (roles: Role[]) => {
+    const clean = parseRoles(roles);
+    if (clean.length === 0) return;
+    const current = useAuthStore.getState().role;
+    const role = current && clean.includes(current) ? current : clean[0];
+    set({ roles: clean, role });
+    persistRoles(clean);
+    if (role !== current) {
+      try {
+        await SecureStore.setItemAsync(ROLE_KEY, role);
+      } catch (error) {
+        console.warn("[Auth] Failed to persist role:", error);
+      }
+    }
+  },
+
+  switchRole: async (role: Role) => {
+    if (!useAuthStore.getState().roles.includes(role)) return false;
+    // State first, synchronously: lib/switchSide clears the caches and
+    // flips the side in the same tick, so no request can go out between
+    // the two carrying the old side's header.
     set({ role });
+    try {
+      await SecureStore.setItemAsync(ROLE_KEY, role);
+    } catch (error) {
+      console.warn("[Auth] Failed to persist active role:", error);
+    }
+    return true;
   },
 
   /**
@@ -185,6 +260,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY);
       await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
       await SecureStore.deleteItemAsync(ROLE_KEY);
+      await SecureStore.deleteItemAsync(ROLES_KEY);
       await SecureStore.deleteItemAsync(HAS_PASSWORD_KEY);
     } catch (error) {
       console.warn("[Auth] Failed to clear tokens:", error);
@@ -193,6 +269,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       accessToken: null,
       refreshToken: null,
       role: null,
+      roles: [],
       hasPassword: true,
       deviceToken: null,
       isAuthenticated: false,
@@ -209,19 +286,34 @@ export const useAuthStore = create<AuthState>((set) => ({
    */
   loadTokens: async () => {
     try {
-      const [accessToken, refreshToken, storedRole, storedHasPassword] =
-        await Promise.all([
-          SecureStore.getItemAsync(ACCESS_TOKEN_KEY),
-          SecureStore.getItemAsync(REFRESH_TOKEN_KEY),
-          SecureStore.getItemAsync(ROLE_KEY),
-          SecureStore.getItemAsync(HAS_PASSWORD_KEY),
-        ]);
+      const [
+        accessToken,
+        refreshToken,
+        storedRole,
+        storedHasPassword,
+        storedRoles,
+      ] = await Promise.all([
+        SecureStore.getItemAsync(ACCESS_TOKEN_KEY),
+        SecureStore.getItemAsync(REFRESH_TOKEN_KEY),
+        SecureStore.getItemAsync(ROLE_KEY),
+        SecureStore.getItemAsync(HAS_PASSWORD_KEY),
+        SecureStore.getItemAsync(ROLES_KEY),
+      ]);
 
       // Validate the stored role string against the union type.
       const role: "Applicant" | "Sponsor" | null =
         storedRole === "Applicant" || storedRole === "Sponsor"
           ? storedRole
           : null;
+      // Every side the account holds; an install from before dual sides
+      // has no list, so it's just the stored role.
+      let roles: Role[] = [];
+      try {
+        roles = parseRoles(storedRoles ? JSON.parse(storedRoles) : []);
+      } catch {
+        roles = [];
+      }
+      if (role) roles = withRole(roles, role);
       // Only an explicit stored "false" means passwordless — absent (every
       // pre-SSO install) defaults to true, matching the field's contract.
       const hasPassword = storedHasPassword !== "false";
@@ -231,6 +323,7 @@ export const useAuthStore = create<AuthState>((set) => ({
           accessToken: null,
           refreshToken: null,
           role: null,
+          roles: [],
           isAuthenticated: false,
           isLoading: false,
         });
@@ -239,7 +332,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
       if (isTokenExpired(accessToken)) {
         // Stage the refresh token + role so refreshAccessToken() can read them.
-        set({ refreshToken, role, hasPassword });
+        set({ refreshToken, role, roles, hasPassword });
         const refreshed = await useAuthStore.getState().refreshAccessToken();
         if (!refreshed) {
           // refreshAccessToken() only calls clearAuth() (which nulls
@@ -271,6 +364,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         accessToken,
         refreshToken,
         role,
+        roles,
         hasPassword,
         isAuthenticated: true,
         isLoading: false,
@@ -286,6 +380,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         accessToken: null,
         refreshToken: null,
         role: null,
+        roles: [],
         isAuthenticated: false,
         isLoading: false,
       });

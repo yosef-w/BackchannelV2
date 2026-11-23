@@ -12,7 +12,11 @@ export interface LoginResponse {
   email: string;
   access_token: string;
   refresh_token: string;
+  /** The side to open on. */
   role: "Applicant" | "Sponsor";
+  /** Every side the account holds (docs/DUAL_SIDES.md); absent on a
+   * backend that predates dual sides. */
+  roles?: string[] | null;
 }
 
 export interface RegisterResponse {
@@ -59,6 +63,8 @@ export interface SsoLoginResponse {
   is_new_user: boolean;
   needs_onboarding: boolean;
   has_password: boolean;
+  /** Every side the account holds (docs/DUAL_SIDES.md); may be absent. */
+  roles?: string[] | null;
 }
 
 /**
@@ -107,6 +113,24 @@ export interface CompleteSsoOnboardingResponse {
   profile_id: string;
   role: "Applicant" | "Sponsor";
   message: string;
+}
+
+/**
+ * Payload for `POST /api/profile/roles/` — adds the OTHER side to an
+ * account that already has one (docs/DUAL_SIDES.md). Deliberately the same
+ * shape as CompleteSsoOnboardingRequest: the backend can reuse that
+ * endpoint's validation and profile-row creation, minus the "one-shot"
+ * guard.
+ */
+export type AddRoleRequest = CompleteSsoOnboardingRequest;
+
+/** `POST /api/profile/roles/`'s 201 body. */
+export interface AddRoleResponse {
+  role: "Applicant" | "Sponsor";
+  /** Every side the account now holds. */
+  roles: ("Applicant" | "Sponsor")[];
+  profile_id?: string;
+  message?: string;
 }
 
 export interface UpdateProfileRequest {
@@ -202,6 +226,9 @@ export interface RawEducationRow {
 export interface ProfileResponse {
   USER_ID?: string;
   IS_SPONSOR?: boolean;
+  /** Every side the account holds (docs/DUAL_SIDES.md). Absent on a
+   * backend that predates dual sides — then IS_SPONSOR is the one role. */
+  ROLES?: string[] | null;
   /** Server-side entitlement from the RevenueCat webhook (audit record;
    *  the app's premium state still comes from the RevenueCat SDK). */
   IS_PREMIUM?: boolean;
@@ -239,6 +266,9 @@ export interface ProfileResponse {
       | null;
     INSIGHTS?: string | { question?: string; answer?: string }[] | null;
     ACHIEVEMENTS?: string | null;
+    /** This side's own bio (docs/DUAL_SIDES.md §7). Present only on a
+     * backend with dual sides; the top-level BIO is used otherwise. */
+    BIO?: string | null;
   };
   sponsor_profile?: {
     COMPANY?: string | null;
@@ -248,6 +278,8 @@ export interface ProfileResponse {
     SKILLS?: string | string[] | null;
     COMPANIES_CAN_REFER_TO?: string | string[] | null;
     INSIGHTS?: string | { question?: string; answer?: string }[] | null;
+    /** This side's own bio — see applicant_profile.BIO. */
+    BIO?: string | null;
   };
 }
 
@@ -321,6 +353,27 @@ export const authApi = {
       "/api/auth/complete-onboarding/",
       payload,
     );
+  },
+
+  /**
+   * Adds the other side to an account that already has one — a sponsor
+   * starting a job search, or an applicant who can now refer people
+   * (docs/DUAL_SIDES.md). Authenticated; no new tokens are issued, since
+   * every request already names its side in the X-Active-Role header.
+   * NOT BUILT on the backend yet: until it is this rejects (404/405).
+   */
+  addRole: async (payload: AddRoleRequest): Promise<AddRoleResponse> => {
+    return api.post<AddRoleResponse>("/api/profile/roles/", payload);
+  },
+
+  /**
+   * What's waiting on EACH side the account holds — feeds the counts in
+   * the side switcher (docs/DUAL_SIDES.md). Unlike every other read this
+   * is not scoped to the active side. Returned raw: lib/sides'
+   * parseSidesSummary tolerates the shape. NOT BUILT on the backend yet.
+   */
+  getSidesSummary: async (): Promise<unknown> => {
+    return api.get<unknown>("/api/profile/roles/summary/");
   },
 
   /**
@@ -665,7 +718,13 @@ export const authApi = {
       // stays intact — this only stops the outgoing PATCH from clobbering
       // them with blanks on every unrelated "personal" group sync.
     }
-    if (dirtyFields.has("professional")) {
+    // The bio is per side for an account that holds both (a sponsor's
+    // "about me" must never show a job-search summary, or the reverse —
+    // docs/DUAL_SIDES.md §7): it goes in the active side's payload below.
+    // Everyone else keeps the one shared bio on the general endpoint.
+    const { useAuthStore } = await import("../stores/useAuthStore");
+    const perSideBio = useAuthStore.getState().roles.length > 1;
+    if (dirtyFields.has("professional") && !perSideBio) {
       basePayload.bio = data.professional.summary;
     }
 
@@ -675,6 +734,9 @@ export const authApi = {
 
     // ── 3. Build the role-specific payload ────────────────────────────────
     const rolePayload: Record<string, any> = {};
+    if (perSideBio && dirtyFields.has("professional")) {
+      rolePayload.bio = data.professional.summary;
+    }
 
     if (userType === "sponsor") {
       if (dirtyFields.has("professional")) {

@@ -1,11 +1,11 @@
 # Backend Changes Needed
 
-**Last updated:** 2026-10-16 — reconciled against both October backend batches (PRs #157–#200, all live in prod). Everything shipped is removed; only open items remain. History of what shipped lives in git and the backend's `docs/FRONTEND_HANDOFF_2026-10-16_PRELAUNCH.md`.
+**Last updated:** 2026-11-22 — added §AF (one account, two sides). Before that: 2026-10-16, reconciled against both October backend batches (PRs #157–#200, all live in prod). Everything shipped is removed; only open items remain. History of what shipped lives in git and the backend's `docs/FRONTEND_HANDOFF_2026-10-16_PRELAUNCH.md`.
 
 **Frontend repo:** `BackchannelV2`
 **Backend repo:** `Backchannel-backend/BackChannel-backend`
 
-> **Open items (2026-10-16):** **Ops, launch-blocking (values emailed to Nico 2026-10-16)** — `REVENUECAT_WEBHOOK_SECRET`, `SUPPORT_EMAIL` + `MODERATION_ALERT_EMAIL` = `support@backchannel.it.com`, `DEFAULT_FROM_EMAIL` on `backchannel.it.com` in the DO prod env (§W #4, §Y #1), SPF/DKIM TXT records for `backchannel.it.com` in DO DNS (§AE #2; the mailbox itself exists now), confirm prod `FRONTEND_URL` (§AB #2). **§AE #1** AASA on `backchannel.it.com`. **§V** — only #2 (profile photos still public; résumé photos done) and #5 (answered below: keep as-is) remain, plus the Low/Info list. **§F #3** SQL-side filtering + flipping `FEED_SCOPE_SPONSOR_DECK` in prod. **§AD** #1/#2/#3/#4/#5/#6. **§X #1 / §AB #2** are the same ops item. **§Y #2/#3, §Z, §AC, §AA, §L** post-launch.
+> **Open items (2026-10-16):** **Ops, launch-blocking (values emailed to Nico 2026-10-16)** — `REVENUECAT_WEBHOOK_SECRET`, `SUPPORT_EMAIL` + `MODERATION_ALERT_EMAIL` = `support@backchannel.it.com`, `DEFAULT_FROM_EMAIL` on `backchannel.it.com` in the DO prod env (§W #4, §Y #1), SPF/DKIM TXT records for `backchannel.it.com` in DO DNS (§AE #2; the mailbox itself exists now), confirm prod `FRONTEND_URL` (§AB #2). **§AE #1** AASA on `backchannel.it.com`. **§V** — only #2 (profile photos still public; résumé photos done) and #5 (answered below: keep as-is) remain, plus the Low/Info list. **§F #3** SQL-side filtering + flipping `FEED_SCOPE_SPONSOR_DECK` in prod. **§AD** #1/#2/#3/#4/#5/#6. **§X #1 / §AB #2** are the same ops item. **§Y #2/#3, §Z, §AC, §AA, §L** post-launch. **§AF** (one account, two sides) — new feature, post-launch, needs your sizing first.
 >
 > **Answers to the questions in your 2026-10-16 handoff (so you're unblocked):**
 > 1. **§V #5 registration enumeration — keep as-is for launch.** The explicit "email already in use" is better UX for a cold-start product, registration is already throttled 10/h/IP, and App Review doesn't require the generic response. Revisit post-launch.
@@ -15,6 +15,66 @@
 > 5. **RevenueCat webhook — created 2026-10-16** (RevenueCat integration `whintgr7b322042ad`, URL `https://oyster-app-4pg5w.ondigitalocean.app/api/webhooks/revenuecat/`, all environments/events). Yosef will send you the Authorization value privately; set it as `REVENUECAT_WEBHOOK_SECRET` in the DO prod env, then "Send test event" in the RevenueCat dashboard should return 200.
 >
 > Shipped items are removed to keep this lean; the backend's record now lives in its [`KNOWN_ISSUES.md`](../../Backchannel-backend/BackChannel-backend/docs/KNOWN_ISSUES.md) "Recently fixed" list (their `BACKEND_CHANGES_SHIPPED.md` was retired in the 2026-07 docs overhaul).
+
+## §AF — One account, two sides: a sponsor who is also job hunting 🟢 Post-launch, new feature (new section, 2026-11-22 — for Nico)
+
+**What it is.** A sponsor can add a job-search side to their account, then switch between them. **Sponsors only:** an applicant can never add a sponsor side (they have no current employer to refer into), so the server should reject that. Each side keeps its own feed, matches, inbox and referrals. Adding the second side is **free**; the job-search side has the same free limits and Premium offer as any applicant. Product rules, the full API contract and a table of 13 scenarios are in [`docs/DUAL_SIDES.md`](DUAL_SIDES.md) — this section is the summary plus what we found in your code.
+
+**App status.** Built on branch `feat/dual-sides` behind `DUAL_SIDES_ENABLED`, not merged. Against today's backend a release build shows **nothing new**: the "add a side" invitation only appears once `GET /api/profile/` returns a `ROLES` list. Development builds fake the add locally so the screens can be reviewed. The app already sends `X-Active-Role: Applicant|Sponsor` on every request.
+
+**What in the backend assumes one role (checked against `origin/develop` @ 7966d0f):**
+
+- `user_info.user_profiles` has `IS_JOB_SEEKER` and `IS_SPONSOR` booleans — good, they can both be true — but also a single `ROLE_TYPE`, and that single value is what everything reads.
+- `permissions.py` `IsSponsor` / `IsApplicant` gate **17 endpoints** (`views_jobs.py` ×10, `views_matching.py` ×5, `views_auth.py` ×2) on `ROLE_TYPE == 'Sponsor'|'Applicant'`.
+- `services/messaging.py` `_resolve_participants` decides who is the applicant in a conversation from `ROLE_TYPE`. A user who is both would be refused in one direction.
+- `services/sso.py` `complete_onboarding` returns 400 "Onboarding is already complete" once a role is set, so it can't be reused to add the second side as-is.
+- `queries/users.get_user_role` feeds login and SSO, which return a single `role`.
+
+**Endpoints that branch on `ROLE_TYPE` inside, not via a permission class (found 2026-11-22; these also need the active side):**
+
+- `services/profiles.py` ~L49 — `GET /api/profile/` returns only ONE of `applicant_profile` / `sponsor_profile`. Needs both for a two-sided user (item 1).
+- `queries/profiles.py` ~L410 — `GET /api/profiles/<id>/public/` picks the sub-object by `ROLE_TYPE`, **and caches it under `pub_profile:{user_id}` with no side in the key** (item 9).
+- `services/jobs.py` ~L881 — `browse_jobs`: a sponsor only ever sees their own company's roles. On the job-search side that's exactly backwards.
+- `services/referrals.py` ~L29 and ~L72, `queries/referrals.py` ~L135 — creating a referral, listing referrals and the count all choose sponsor vs applicant by `ROLE_TYPE`.
+- `services/messaging.py` `_resolve_participants` (above).
+- `services/documents.py` `classify_resume` ~L771 writes `first_name`, `last_name` **and `bio`** to the shared `user_profiles` row (`USER_PROFILE_FIELDS`, ~L601). A job-search résumé would overwrite the sponsor's bio (item 8).
+
+**What we need (detail and request/response shapes in DUAL_SIDES.md §1–§8):**
+
+1. **Hold both profiles.** Allow a row in both `applicant_profiles` and `sponsor_profiles`, set both flags, and return `ROLES: ["Sponsor","Applicant"]` on `GET /api/profile/` (keep `IS_SPONSOR` for old app versions). Login/SSO may add `roles`.
+2. **`POST /api/profile/roles/`** — a sponsor adds the job-search side. Body is the `Applicant` shape of `complete-onboarding`, minus the one-shot guard. 400 if already held, **403 if the caller isn't a sponsor or asks for `Sponsor`**; safe to retry.
+3. **Read `X-Active-Role`.** Replace the `ROLE_TYPE` checks in `IsSponsor`/`IsApplicant` and `_resolve_participants` with "the user holds this side AND it's the active one"; 403 for a side they don't hold. One-sided users: ignore the header, behave as today. **Exceptions:** never fail `GET /api/profile/` on the header (it's how a stale phone corrects itself); token refresh, logout and device registration are per user; WebSockets can't send it, so authorise chat sockets by conversation participant.
+4. **Side-scoped data.** Matches, likes, conversations, notifications, referrals and check-ins each belong to the side the user held when they were created. A thread where the user is the sponsor must never appear in their job-search inbox.
+5. **Employer privacy — the feature's whole promise, enforced server-side:** a user's job-search profile is never shown to sponsors at their own employer (match on the sponsor side's company **and** the verified work-email domain); they never see their own employer's roles in the job-search feed; nobody can match with, message or refer themselves; nothing on either side reveals the other exists.
+6. **`role` in every push payload** (`"applicant"`/`"sponsor"`) so a tap opens the right side.
+7. **`GET /api/profile/roles/summary/`** — what's waiting on each side (`new_interest`, `new_matches`, `unread_messages`, `referral_updates`), not scoped to the active side. The app already shows these in the switcher once it exists.
+8. **Deletion** keeps deleting the whole account and both profiles. Removing one side is not needed yet.
+9. **Public profiles show one side.** `GET /api/profiles/<id>/public/` returns only the side the viewer relates to: the sponsor side when the viewer is an applicant (or the user is the sponsor on the job/conversation in question), the job-search side when the viewer is a sponsor. Never both, and never the other side's existence. The cache key must include the side.
+10. **Bio per side.** `BIO` lives on `user_profiles`, shared. For a two-sided user it must be per side: add `BIO` to `applicant_profiles` and `sponsor_profiles`, return it inside each sub-object, accept `bio` on `PATCH /api/profile/applicant/update/` and `/sponsor/update/`, and make `classify_resume` write its `bio` to the applicant side only. **The app already does its half:** for a two-sided account it sends `bio` on the side's endpoint and reads `applicant_profile.BIO` / `sponsor_profile.BIO`. Name, photo, location, phone, LinkedIn and portfolio stay shared.
+11. **Seed the new side from what you already know.** On `POST /api/profile/roles/`, prefill the applicant profile: `CURRENT_ROLE` from the sponsor's `JOB_TITLE` (unless the request sends `current_role`), and one `PROFESSIONAL_EXPERIENCES` entry `{title: JOB_TITLE, company: COMPANY, current: true}`. Résumé, skills, education and prompts start empty; the app's profile-completion prompt asks for them before the first like.
+12. **Self and employer in every applicant-facing list,** not just the deck: job pack, browse/search, sponsored jobs, waitlist, and the marketplace "request a sponsor" (which reaches every sponsor at a company — a coworker must never receive a request from someone at their own company). And the profile pack must never show a sponsor their own job-search profile.
+
+**Suggested order:** 1 + 2 + 3 first (that alone makes the switch work end to end), then 5, 9, 10, 12 (privacy — all must ship before the feature goes live), then 4, 6, 7, 11.
+
+**Decisions we've made, so you don't have to guess:**
+
+- **One subscription per person.** Premium (RevenueCat, `IS_PREMIUM`) is per user and applies to the job-search side's limits; the sponsor side has no paywall.
+- **One set of notification preferences per person** for v1. Pushes carry `role` (item 6) so the app routes them.
+- **`ROLE_TYPE`** can stay as "the side they signed up with" for admin/analytics; nothing in the app relies on it once `ROLES` exists. Admin counts should count a two-sided user once in each column.
+- **Sponsors only:** no applicant ever gets a sponsor side.
+
+**Before you call it done, please run these end to end with two test accounts at the same company (A two-sided, B a plain sponsor) and one applicant C:**
+
+1. A adds a job search; `GET /api/profile/` returns `ROLES` with both and both sub-objects.
+2. A's job-search feed, browse and search contain no roles at A's company; A can't waitlist or request a sponsor there.
+3. B's profile pack never shows A's job-search profile; B can't open it via `/public/` either.
+4. C views A as a sponsor (A sponsors a role C liked): C sees only A's sponsor side, sponsor bio, no résumé.
+5. A uploads a résumé on the job-search side; A's sponsor bio is unchanged.
+6. A matches and messages on both sides; each inbox, match list, referral list and unread count shows only its own side.
+7. A push to A's other side carries `role`.
+8. Deleting A removes both profiles.
+
+**Question for you:** a rough size for the whole section.
 
 ## §W — App Store submission: what's still open after the 2026-10-13 batch 🟠 Ops + confirmations (section trimmed 2026-10-15)
 

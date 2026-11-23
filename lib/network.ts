@@ -17,6 +17,7 @@ type NetInfoState = {
 };
 type NetInfoModule = {
   addEventListener: (cb: (s: NetInfoState) => void) => () => void;
+  fetch?: () => Promise<NetInfoState>;
 };
 
 let NetInfo: NetInfoModule | null = null;
@@ -68,4 +69,18 @@ export function useIsOffline(): boolean {
   }, []);
 
   return offline;
+}
+
+/**
+ * One-off check for code outside React (e.g. before starting something
+ * that can't complete offline). Same conservative rule: "don't know" and
+ * "no NetInfo in this binary" both read as online.
+ */
+export async function isOfflineNow(): Promise<boolean> {
+  if (!NetInfo?.fetch) return false;
+  try {
+    return isOfflineFrom(await NetInfo.fetch());
+  } catch {
+    return false;
+  }
 }
