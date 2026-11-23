@@ -12,16 +12,17 @@
 // The 140pt tail spacer keeps those pills off the last section.
 
 import React, { useState } from "react";
+import type { SharedValue } from "react-native-reanimated";
 import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { Flag } from "@/components/ui/icons";
 import { Colors, Fonts } from "@/constants/theme";
 import { hitSlopTo44, shouldStackForFontScale } from "@/lib/responsive";
 import type { SponsorCardLayout } from "@/constants/config";
+import { RevealOnScroll, REVEAL_END } from "../RevealOnScroll";
 import { ApplicantHeroCard } from "./ApplicantHeroCard";
 import { ConnectorHeader } from "./ConnectorHeader";
 import { FitHeader } from "./FitHeader";
 import { FitTable } from "./FitTable";
-import { HeroLedger } from "./HeroLedger";
 import { heroStats, relativeAgo } from "./facts";
 import {
   AboutSection,
@@ -36,8 +37,8 @@ import {
   floatingActionsBottom,
   heroOpeningMinHeight,
   heroPhotoHeight,
-  LEDGER_ESTIMATE,
   pillsReserve,
+  revealTail,
   ROLE_ROW_ESTIMATE,
 } from "./stageLayout";
 import type { ApplicantFacts, FitSummary, RoleContext } from "./model";
@@ -57,6 +58,11 @@ export interface SponsorApplicantCardProps {
   photoHeight?: number;
   /** Space under the last section (default: room for the floating pills). */
   tail?: number;
+  /** The deck scroll's offset. When given, the record under the opening is
+   * hidden at the top and fades in on scroll (RevealOnScroll) — it starts
+   * behind the floating pills, so it must not show there. Omitted (the
+   * profile preview, which has no pills): the record simply follows. */
+  scrollY?: SharedValue<number>;
   onOpenRoleSwitcher?: () => void;
   onViewProfile?: () => void;
   /** Opens the report sheet. Rendered as a quiet "Report <name>" link at
@@ -76,6 +82,7 @@ function SponsorApplicantCardImpl({
   stageHeight = null,
   photoHeight: photoHeightOverride,
   tail,
+  scrollY,
   onOpenRoleSwitcher,
   onViewProfile,
   onReport,
@@ -85,23 +92,22 @@ function SponsorApplicantCardImpl({
   // back to the hero, which stands on the applicant alone.
   const effective: SponsorCardLayout = role ? layout : "hero";
   // The hero opening claims exactly the stage above the floating pills:
-  // the photo card gets what's left after the role row and ledger (both
-  // measured), so the ledger always ends a clear gap above the pills — on
+  // the photo card gets what's left after the (measured) role row, so the
+  // card — stat grid included — always ends a clear gap above the pills — on
   // a phone of any size, an iPad, or at large text, where the pills stack
   // and the reserve grows. A plain number, not flex. See stageLayout.ts.
   const [roleH, setRoleH] = useState(ROLE_ROW_ESTIMATE);
-  const [ledgerH, setLedgerH] = useState(LEDGER_ESTIMATE);
-  const heroMinHeight = heroOpeningMinHeight(
-    stageHeight,
-    windowHeight,
-    pillsReserve(
-      floatingActionsBottom(Platform.OS),
-      shouldStackForFontScale(fontScale),
-    ),
+  const reserve = pillsReserve(
+    floatingActionsBottom(Platform.OS),
+    shouldStackForFontScale(fontScale),
   );
+  const heroMinHeight = heroOpeningMinHeight(stageHeight, windowHeight, reserve);
   const photoHeight =
     photoHeightOverride ??
-    heroPhotoHeight(heroMinHeight, role ? roleH : 0, ledgerH);
+    // Nothing follows the photo card in the opening any more (the stats
+    // are back on the photo), so it takes all the room under the role row
+    // and its bottom edge is what clears the pills.
+    heroPhotoHeight(heroMinHeight, role ? roleH : 0, 0);
 
   let opening: React.ReactNode;
   if (effective === "connector" && role) {
@@ -142,20 +148,9 @@ function SponsorApplicantCardImpl({
           height={photoHeight}
           joined={!!role}
           strength={fit.strength}
+          stats={heroStats(facts)}
           onReport={onReport}
         />
-        {/* The decisive numbers, on paper under a shorter photo card so
-            HomeView's floating pills land over whitespace, never on a
-            stat (they used to be a frosted grid pinned to the photo's
-            bottom edge — the pills' edge too). */}
-        <View
-          onLayout={(e) => {
-            const h = Math.round(e.nativeEvent.layout.height);
-            setLedgerH((prev) => (prev === h ? prev : h));
-          }}
-        >
-          <HeroLedger cells={heroStats(facts)} />
-        </View>
       </View>
     );
   }
@@ -164,9 +159,8 @@ function SponsorApplicantCardImpl({
   // photo card in place of ABOUT; with the card trimmed to the person, the
   // ABOUT section carries the bio again.
   const first = facts.firstName || facts.name;
-  return (
-    <View>
-      {opening}
+  const record = (
+    <>
       <AboutSection firstName={first} bio={facts.bio} />
       <ExperienceSection groups={facts.experienceGroups} />
       <EducationSection items={facts.education} />
@@ -185,7 +179,26 @@ function SponsorApplicantCardImpl({
           <Text style={styles.reportText}>Report {first}</Text>
         </Pressable>
       ) : null}
-      <View style={[styles.tail, tail !== undefined && { height: tail }]} />
+    </>
+  );
+  // Only the hero opening is sized to end above the pills; the connector
+  // and fit openings flow straight into the record as they always have.
+  const reveal = !!scrollY && effective === "hero";
+  return (
+    <View>
+      {opening}
+      {reveal && scrollY ? (
+        <RevealOnScroll scrollY={scrollY}>{record}</RevealOnScroll>
+      ) : (
+        record
+      )}
+      <View
+        style={[
+          styles.tail,
+          reveal && { height: revealTail(reserve, REVEAL_END) },
+          tail !== undefined && { height: tail },
+        ]}
+      />
     </View>
   );
 }

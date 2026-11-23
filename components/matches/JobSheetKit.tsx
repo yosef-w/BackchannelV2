@@ -189,7 +189,7 @@ export function ReadMoreText({
           hitSlop={hitSlopTo44(60, 25)}
         >
           <Text style={styles.readMoreText}>
-            {expanded ? "Show less" : "Read more"}
+            {expanded ? "Show less" : "Show more"}
           </Text>
           {expanded ? (
             <ChevronUp size={14} color={Colors.ink} strokeWidth={2.5} />

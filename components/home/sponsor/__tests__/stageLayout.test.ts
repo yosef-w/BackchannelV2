@@ -126,3 +126,13 @@ describe("heroPhotoHeight", () => {
     expect(heroPhotoHeight(526, 0, 137)).toBe(526 - 8 - 137);
   });
 });
+
+describe("revealTail", () => {
+  it("leaves room to finish the fade and clear the pills", () => {
+    const { revealTail } = jest.requireActual("../stageLayout");
+    // Even a card with nothing under its opening can scroll the fade's
+    // full travel: the tail alone exceeds the reserve by that distance.
+    expect(revealTail(192, 116)).toBe(308);
+    expect(revealTail(192, 116) - 192).toBeGreaterThanOrEqual(116);
+  });
+});

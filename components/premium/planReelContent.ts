@@ -76,7 +76,7 @@ export const HEADLINES: readonly CaptionSegment[][] = [
 ];
 
 export const SUBS: readonly string[] = [
-  `Express interest in ${DAILY_LIKE_LIMITS.premium} roles from today's deck. Free stops at ${DAILY_LIKE_LIMITS.free}.`,
+  `Express interest in ${DAILY_LIKE_LIMITS.premium} of today's roles. Free stops at ${DAILY_LIKE_LIMITS.free}.`,
   "A real person at that company hears about you. Your first is on us; members never stop.",
   "Everyone can browse sponsored roles. Members are the ones who raise a hand.",
 ];

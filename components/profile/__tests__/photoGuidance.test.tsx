@@ -93,7 +93,8 @@ describe("SponsorApplicantCard overrides (profile PREVIEW)", () => {
     );
     const flat = JSON.stringify(r.toJSON());
     expect(flat).toContain('"minHeight":333');
-    // The tail spacer's style is [default 140, override 20] — the override wins.
-    expect(flat).toContain('[{"height":140},{"height":20}]');
+    // The tail spacer's style ends with the override, so it wins over the
+    // default 140 (and over the fade-in tail, which only applies on the deck).
+    expect(flat).toMatch(/\{"height":140\}[^\]]*\{"height":20\}\]/);
   });
 });

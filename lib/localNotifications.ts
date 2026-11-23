@@ -128,8 +128,8 @@ export async function scheduleDailyDeckReminder(
     const content = {
       title:
         userType === "sponsor"
-          ? "Your applicant deck is ready"
-          : "Your fresh deck is ready",
+          ? "New applicants are ready"
+          : "New roles are ready",
       body:
         userType === "sponsor"
           ? "New applicants matched to your roles are waiting."
@@ -198,8 +198,8 @@ export async function scheduleUnfinishedDeckReminder(
         title: "Pick up where you left off",
         body:
           userType === "sponsor"
-            ? `${cardsRemaining} applicant${cardsRemaining === 1 ? "" : "s"} left in today's deck.`
-            : `${cardsRemaining} role${cardsRemaining === 1 ? "" : "s"} left in today's deck.`,
+            ? `${cardsRemaining} applicant${cardsRemaining === 1 ? "" : "s"} left to review today.`
+            : `${cardsRemaining} role${cardsRemaining === 1 ? "" : "s"} left to review today.`,
         data: { type: "unfinished_deck" },
       },
       trigger: {

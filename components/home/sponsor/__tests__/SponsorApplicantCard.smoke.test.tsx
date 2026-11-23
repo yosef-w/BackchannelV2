@@ -160,7 +160,7 @@ describe("SponsorApplicantCard", () => {
     expect(r.getByText("STRONG MATCH")).toBeTruthy();
     expect(r.getByText("INTERESTED IN YOUR ROLE")).toBeTruthy();
     expect(r.getByText("Amy Smith")).toBeTruthy();
-    // Section eyebrow + the ledger's stat label under the photo card.
+    // Section eyebrow + the stat grid's label on the photo card.
     expect(r.getAllByText("EXPERIENCE").length).toBeGreaterThan(1);
     expect(r.getByText("The New York Times")).toBeTruthy();
     expect(r.getByText("ACHIEVEMENTS")).toBeTruthy();

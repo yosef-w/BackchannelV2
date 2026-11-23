@@ -32,6 +32,24 @@ import {
   trackScreenViewed,
 } from "@/lib/analytics/mixpanel";
 import { Colors } from "@/constants/theme";
+import { DUAL_SIDES_ENABLED } from "@/constants/config";
+import { SideSwitchCover } from "@/components/sides/SideSwitchCover";
+import { SideSwitcherSheet } from "@/components/sides/SideSwitcherSheet";
+import {
+  holdsBoth,
+  otherRole,
+  parseSidesSummary,
+  roleForNotification,
+  sideLabel,
+  waitingTotal,
+  type Role,
+} from "@/lib/sides";
+import { authApi } from "@/lib/auth-api";
+import {
+  switchSide,
+  useSideSwitchStore,
+  type SideSwitchSource,
+} from "@/lib/switchSide";
 import { getUnreadNotificationCount } from "@/lib/api";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
@@ -113,6 +131,7 @@ export default function TabsLayout() {
   // ── Auth gate + role (moved from the old dashboard screen) ──────────────
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const role = useAuthStore((state) => state.role);
+  const roles = useAuthStore((state) => state.roles);
   const profileData = useUserProfileStore((state) => state.data);
 
   const userType: UserType = useMemo(() => {
@@ -145,7 +164,7 @@ export default function TabsLayout() {
         // mounted underneath, running, instead of torn down. Same bug
         // class already fixed at every pre-auth exit point, just in the
         // auth-loss direction instead of the auth-gain direction.
-        router.dismissAll();
+        if (router.canDismiss()) router.dismissAll();
         router.replace("/splash");
       }, 800);
       // Single place every "session ended" path funnels through — manual
@@ -218,6 +237,62 @@ export default function TabsLayout() {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [publicProfileData, setPublicProfileData] =
     useState<PublicProfileUserData | null>(null);
+
+  // ── Dual sides (docs/DUAL_SIDES.md) ──────────────────────────────────────
+  // An account that holds both a sponsor side and a job search gets a
+  // switcher pill in the top bar. Everyone else: nothing here renders.
+  const hasBothSides = DUAL_SIDES_ENABLED && holdsBoth(roles);
+  const [sideSwitcherOpen, setSideSwitcherOpen] = useState(false);
+  const switchingTo = useSideSwitchStore((state) => state.switchingTo);
+  // What's waiting on each side, for the switcher's counts and the pill's
+  // dot. Only asked of a backend that supports dual sides; any failure
+  // leaves it empty and the switcher simply shows no counts. Refreshed
+  // each minute while the shell is on screen, and whenever the sheet opens.
+  const serverSupportsSides = useSideSwitchStore(
+    (state) => state.serverSupportsSides,
+  );
+  const { data: sidesSummary = {}, refetch: refetchSidesSummary } = useQuery({
+    queryKey: ["sidesSummary"],
+    queryFn: async () => parseSidesSummary(await authApi.getSidesSummary()),
+    enabled: hasBothSides && serverSupportsSides && isAuthenticated,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+    retry: false,
+  });
+  const otherSideWaiting =
+    hasBothSides && role ? waitingTotal(sidesSummary[otherRole(role)]) : 0;
+  // Safety net: the active side can also change WITHOUT lib/switchSide —
+  // the server reports the account no longer holds the side it was on
+  // (removed on another device) and the auth store falls back to the
+  // other. Nothing cleared the caches for that, so do it here; an
+  // orchestrated switch has already cleared them and is skipped.
+  const lastUserTypeRef = useRef(userType);
+  useEffect(() => {
+    if (lastUserTypeRef.current === userType) return;
+    lastUserTypeRef.current = userType;
+    if (useSideSwitchStore.getState().switchingTo) return;
+    // Signing out also changes it (the role clears) — leave that to the
+    // session-ended effect above.
+    if (!useAuthStore.getState().isAuthenticated) return;
+    queryClient.clear();
+    router.navigate("/(tabs)/home");
+  }, [userType, queryClient, router]);
+  const handleSwitchSide = useCallback(
+    async (to: Role, source: SideSwitchSource = "switcher") => {
+      setSideSwitcherOpen(false);
+      // Overlays and thread state belong to the side being left.
+      setNotificationsOpen(false);
+      setPublicProfileData(null);
+      setSelectedConversationId(null);
+      setPendingMessageJobId(null);
+      setPendingMessageUserId(null);
+      setPendingMessageConversationId(null);
+      setIsThreadActive(false);
+      router.navigate("/(tabs)/home");
+      await switchSide(to, queryClient, source);
+    },
+    [router, queryClient],
+  );
 
   // ── Unread notification count for the bell badge ─────────────────────────
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
@@ -293,6 +368,10 @@ export default function TabsLayout() {
 
   // ── Push notification tap routing (live + cold start, deduped) ───────────
   const lastHandledPushIdRef = useRef<string | null>(null);
+  // Lets the handler re-enter itself after switching sides.
+  const handlePushResponseRef = useRef<
+    ((response: Notifications.NotificationResponse | null) => void) | null
+  >(null);
   const handlePushResponse = useCallback(
     (response: Notifications.NotificationResponse | null) => {
       if (!response) return;
@@ -307,6 +386,26 @@ export default function TabsLayout() {
 
       const type = data.type as string | undefined;
       trackPushNotificationTapped({ pushType: type });
+      // A notification for the account's OTHER side: switch first, then
+      // route it — otherwise it would open the wrong side's matches or
+      // inbox (docs/DUAL_SIDES.md).
+      if (DUAL_SIDES_ENABLED) {
+        const target = roleForNotification(data);
+        const auth = useAuthStore.getState();
+        if (target && target !== auth.role && auth.roles.includes(target)) {
+          // Re-enter only once the switch actually happened: if it was
+          // refused (offline, unsaved profile edits) the active side is
+          // unchanged and re-entering would land right back here.
+          switchSide(target, queryClient, "notification")
+            .then((switched) => {
+              if (!switched) return;
+              lastHandledPushIdRef.current = null;
+              handlePushResponseRef.current?.(response);
+            })
+            .catch(() => {});
+          return;
+        }
+      }
       // The notifications feed and the public-profile viewer are layout
       // state, not routes: router.navigate() below switches the tab
       // underneath them but leaves them covering it (tab bar hidden, the
@@ -361,6 +460,9 @@ export default function TabsLayout() {
       );
     return () => subscription.remove();
   }, [isAuthenticated, handlePushResponse]);
+  useEffect(() => {
+    handlePushResponseRef.current = handlePushResponse;
+  }, [handlePushResponse]);
 
   // Cold start: when the app is killed and launched from a push tap, the OS
   // delivers the tap BEFORE the listener above mounts. This surfaces the
@@ -478,10 +580,19 @@ export default function TabsLayout() {
             unreadNotificationCount={unreadNotificationCount}
             onOpenCheckIn={openCheckIn}
             onOpenNotifications={() => setNotificationsOpen(true)}
+            sideLabel={hasBothSides && role ? sideLabel(role) : null}
+            onOpenSideSwitcher={() => {
+              setSideSwitcherOpen(true);
+              if (serverSupportsSides) refetchSidesSummary();
+            }}
+            otherSideWaiting={otherSideWaiting}
           />
 
           <View style={styles.mainContent}>
             <Tabs
+              // Keyed on the side: switching sides remounts every tab, so
+              // no screen carries the other side's local state across.
+              key={userType}
               initialRouteName="home"
               screenOptions={{
                 headerShown: false,
@@ -558,6 +669,20 @@ export default function TabsLayout() {
               ))}
           </View>
         </SafeAreaView>
+
+        {/* ── Dual sides: the switcher sheet and the switch cover ───────── */}
+        {hasBothSides && role ? (
+          <SideSwitcherSheet
+            visible={sideSwitcherOpen}
+            roles={roles}
+            activeRole={role}
+            company={profileData?.professional?.company}
+            summaries={sidesSummary}
+            onSwitch={(to) => handleSwitchSide(to, "switcher")}
+            onClose={() => setSideSwitcherOpen(false)}
+          />
+        ) : null}
+        <SideSwitchCover to={switchingTo} />
 
         {/* ── Referral check-in modals ──────────────────────────────────── */}
         <ApplicantCheckInModal

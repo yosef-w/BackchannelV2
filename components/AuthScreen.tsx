@@ -1,3 +1,4 @@
+import { parseRoles } from "@/lib/sides";
 import { useMutation } from "@tanstack/react-query";
 import { ArrowLeft, Eye, EyeOff, Lock, Mail, User } from "@/components/ui/icons";
 import React, { useEffect, useState } from "react";
@@ -223,6 +224,9 @@ export function AuthScreen({
     onSuccess: async (data) => {
       // Store real tokens + role from backend (PR #19)
       await setAuthTokens(data.access_token, data.refresh_token, data.role);
+      // A dual-sides account: both sides known from the first screen,
+      // rather than after the first profile fetch.
+      await useAuthStore.getState().setRoles(parseRoles(data.roles));
       // Logging in WITH a password is proof one exists — clears a stale
       // `false` left by a previous pure-SSO session on this device.
       await setHasPassword(true);
@@ -292,6 +296,9 @@ export function AuthScreen({
       response.refresh_token,
       response.role ?? undefined,
     );
+    if (response.role) {
+      await useAuthStore.getState().setRoles(parseRoles(response.roles));
+    }
     // False for a pure-SSO account — drives the Privacy & Security
     // screen's "Set a Password" UX (password-gated flows 400 without one).
     await setHasPassword(response.has_password);

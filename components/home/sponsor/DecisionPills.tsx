@@ -14,9 +14,9 @@
 // segments stack inside the capsule instead of truncating. Segments are
 // minHeight, not height, so capped text can still never clip.
 //
-// No drop shadow (house rule: shadows retired). It floats over scrolling
-// content, so HomeView puts a ControlsFade behind it — text dissolves into
-// paper instead of colliding with the hairline.
+// No drop shadow (house rule: shadows retired) and no fade behind it: the
+// capsule is opaque paper with an ink hairline, so scrolling content simply
+// passes behind a clean edge.
 
 import * as Haptics from "expo-haptics";
 import React from "react";

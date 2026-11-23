@@ -255,7 +255,7 @@ export function SponsorJobModal({
               contentContainerStyle={{ paddingBottom: 16 }}
             >
               <Text style={jobsModalStyles.modalSubTitle}>
-                Share the inside story candidates can&apos;t find anywhere else.
+                Share what candidates can&apos;t find in the posting.
                 Every question is optional.
               </Text>
 

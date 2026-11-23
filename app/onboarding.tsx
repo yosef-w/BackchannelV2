@@ -106,7 +106,7 @@ export default function OnboardingScreen() {
         // them mounted, and the film's looping clock keeps firing haptic
         // beats from a screen nobody can see.
         onLoginComplete={() => {
-          router.dismissAll();
+          if (router.canDismiss()) router.dismissAll();
           router.replace({ pathname: "/dashboard", params: { mode: userType } });
         }}
       />
@@ -124,7 +124,7 @@ export default function OnboardingScreen() {
     // longer visible. dismissAll() collapses the whole pre-auth stack back
     // to its root first, so nothing from the funnel survives into the
     // authenticated app.
-    router.dismissAll();
+    if (router.canDismiss()) router.dismissAll();
     router.replace({ pathname: "/dashboard", params: { mode: userType } });
   };
 
@@ -198,7 +198,7 @@ export default function OnboardingScreen() {
     resetUser();
     rcReset();
     await clearAuth();
-    router.dismissAll();
+    if (router.canDismiss()) router.dismissAll();
     router.replace("/splash");
   };
 

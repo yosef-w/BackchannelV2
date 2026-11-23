@@ -256,7 +256,7 @@ function CelebrationScene({ onDone }: { onDone: () => void }) {
                 <Path d={LEFT_TEAR_PATH} fill={Colors.ink} />
               </Svg>
               <View style={[styles.bandTextClip, { left: 0 }]}>
-                <Text style={styles.bandText}>MEMBERS ONLY</Text>
+                <Text style={styles.bandText}>PREMIUM</Text>
               </View>
             </Animated.View>
             <Animated.View
@@ -266,7 +266,7 @@ function CelebrationScene({ onDone }: { onDone: () => void }) {
                 <Path d={RIGHT_TEAR_PATH} fill={Colors.ink} />
               </Svg>
               <View style={[styles.bandTextClip, { left: -HALF_W }]}>
-                <Text style={styles.bandText}>MEMBERS ONLY</Text>
+                <Text style={styles.bandText}>PREMIUM</Text>
               </View>
             </Animated.View>
           </Animated.View>
@@ -284,10 +284,10 @@ function CelebrationScene({ onDone }: { onDone: () => void }) {
 
           <View style={styles.chipRow}>
             <Animated.View style={[styles.chip, chipDeck]}>
-              <Text style={styles.chipText}>DAILY TEN</Text>
+              <Text style={styles.chipText}>10 A DAY</Text>
             </Animated.View>
             <Animated.View style={[styles.chip, chipMarket]}>
-              <Text style={styles.chipText}>THE MARKET</Text>
+              <Text style={styles.chipText}>ALL ROLES</Text>
             </Animated.View>
           </View>
         </View>

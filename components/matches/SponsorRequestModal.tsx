@@ -295,8 +295,8 @@ export function SponsorRequestModal({
                     Add Insider Insights
                   </Text>
                   <Text style={styles.srStepSub}>
-                    Share the inside story candidates won&apos;t find anywhere
-                    else. All fields are optional.
+                    Share what candidates can&apos;t find in the posting. All
+                    fields are optional.
                   </Text>
 
                   <SectionCard title="Why This Matters">

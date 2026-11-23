@@ -1018,8 +1018,8 @@ export function SponsorQuestionnaire({
                         {roleOptions.length === 1 ? "" : "s"} at {answers[0]}
                       </Text>
                       <Text style={styles.rolePickerSub}>
-                        Sponsor one now and land on a live deck of matched
-                        applicants instead of an empty one.
+                        Sponsor one now and start with matched applicants
+                        instead of an empty screen.
                       </Text>
                     </ScreenContainer>
                   </View>

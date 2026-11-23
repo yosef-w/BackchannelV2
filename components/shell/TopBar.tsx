@@ -3,11 +3,12 @@
 // bell. Presentation-only; all counts and handlers come from the (tabs)
 // layout.
 
-import { Bell, ClipboardCheck } from "@/components/ui/icons";
+import { Bell, ChevronDown, ClipboardCheck } from "@/components/ui/icons";
 import * as Haptics from "expo-haptics";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Colors, Fonts } from "@/constants/theme";
+import { FontScale } from "@/lib/responsive";
 
 interface TopBarProps {
   /** Contextual — the check-in icon only renders when there are live
@@ -20,6 +21,14 @@ interface TopBarProps {
   unreadNotificationCount: number;
   onOpenCheckIn: () => void;
   onOpenNotifications: () => void;
+  /** The active side's short name ("Sponsor" / "Job search") — set only
+   * for an account that holds both sides (docs/DUAL_SIDES.md). Renders the
+   * switcher pill; everyone else sees the bar exactly as before. */
+  sideLabel?: string | null;
+  onOpenSideSwitcher?: () => void;
+  /** How many things are waiting on the account's OTHER side — a dot on
+   * the pill, so they aren't missed while this side is on screen. */
+  otherSideWaiting?: number;
 }
 
 export function TopBar({
@@ -28,6 +37,9 @@ export function TopBar({
   unreadNotificationCount,
   onOpenCheckIn,
   onOpenNotifications,
+  sideLabel,
+  onOpenSideSwitcher,
+  otherSideWaiting = 0,
 }: TopBarProps) {
   return (
     <View style={styles.topBar}>
@@ -35,7 +47,35 @@ export function TopBar({
         BackChannel
         <Text style={styles.appTitlePeriod}>.</Text>
       </Text>
-      <View style={styles.topBarButtons}>
+      <View style={[styles.topBarButtons, sideLabel ? styles.topBarButtonsTight : null]}>
+        {sideLabel && onOpenSideSwitcher ? (
+          <TouchableOpacity
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              onOpenSideSwitcher();
+            }}
+            activeOpacity={0.7}
+            style={styles.sidePill}
+            accessibilityRole="button"
+            accessibilityLabel={`Switch sides. Currently ${sideLabel}${
+              otherSideWaiting > 0
+                ? `. ${otherSideWaiting} waiting on your other side`
+                : ""
+            }`}
+          >
+            <Text
+              style={styles.sidePillText}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.85}
+              maxFontSizeMultiplier={FontScale.label}
+            >
+              {sideLabel.toUpperCase()}
+            </Text>
+            <ChevronDown color={Colors.ink} size={12} strokeWidth={2.4} />
+            {otherSideWaiting > 0 ? <View style={styles.sidePillDot} /> : null}
+          </TouchableOpacity>
+        ) : null}
         {activeReferralCount > 0 && (
           <TouchableOpacity
             onPress={onOpenCheckIn}
@@ -117,7 +157,43 @@ const styles = StyleSheet.create({
   },
   topBarButtons: {
     flexDirection: "row",
+    alignItems: "center",
     gap: 12,
+  },
+  // The side switcher — an ink hairline (the icon buttons' are quiet grey)
+  // because it's the one control here that changes what the whole app shows.
+  // With the pill, the row holds the wordmark, the pill and up to two icon
+  // buttons — on a 375–402pt phone that only fits with tighter gaps.
+  topBarButtonsTight: { gap: 8, flexShrink: 1, marginLeft: 10 },
+  sidePill: {
+    height: 44,
+    paddingHorizontal: 12,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: Colors.ink,
+    backgroundColor: Colors.paper,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    flexShrink: 1,
+  },
+  sidePillDot: {
+    position: "absolute",
+    top: -2,
+    right: -2,
+    width: 11,
+    height: 11,
+    borderRadius: 6,
+    backgroundColor: Colors.ink,
+    borderWidth: 2,
+    borderColor: Colors.paper,
+  },
+  sidePillText: {
+    fontFamily: Fonts.sansSemiBold,
+    fontSize: 11,
+    letterSpacing: 1.2,
+    color: Colors.ink,
+    flexShrink: 1,
   },
   // Flat letterpress buttons — paper fill with a hairline, not a gray
   // recess; the chrome stays quiet so the wordmark carries the row.

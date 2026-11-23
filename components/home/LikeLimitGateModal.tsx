@@ -173,7 +173,7 @@ function GateSheet({
               </View>
             )}
 
-            <Text style={[styles.eyebrow, styles.eyebrowInk]}>MEMBERS ONLY</Text>
+            <Text style={[styles.eyebrow, styles.eyebrowInk]}>PREMIUM</Text>
 
             {heldFull ? (
               <Text style={[styles.title, styles.titleInk]}>

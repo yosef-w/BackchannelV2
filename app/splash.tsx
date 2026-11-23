@@ -71,13 +71,14 @@ export default function SplashRoute() {
             params: { mode: pendingRole, resume: "1" },
           });
         } else {
-          // dismissAll() first: mostly a no-op on a genuine cold start
-          // (nothing is pushed above splash yet), but cheap insurance for
+          // dismissAll() first — guarded, because on a genuine cold start
+          // nothing is pushed above splash yet and an unguarded call logs
+          // "POP_TO_TOP was not handled" in development. Cheap insurance for
           // the "backed all the way into splash" path this effect also
           // covers — if any pre-auth screen (intro, with its looping
           // haptic clock) is ever still in the stack, this makes sure it
           // doesn't survive into the authenticated app.
-          router.dismissAll();
+          if (router.canDismiss()) router.dismissAll();
           router.replace("/dashboard");
         }
       })();
