@@ -1,11 +1,15 @@
-// ApplicantHeroCard — the "hero" opening (Figma iPhone 17-13/-9): a
-// full-bleed portrait with the identity laid over a dark bottom-up
-// gradient. The decisive numbers used to sit on the photo too, in a
-// frosted grid pinned to the card's bottom edge — the same edge HomeView's
-// floating Pass/Connect pills are pinned to, so the pills covered the
-// second row of stats on a phone. The card is now shorter (the person,
-// not a dashboard) and the stats follow it on paper as HeroLedger, where
-// the pills land over whitespace.
+// ApplicantHeroCard — the "hero" opening (Tori's Figma, "Back Channel"
+// 151:11194): a full-bleed portrait with the identity and the decisive
+// numbers laid over a dark bottom-up gradient, the numbers in a frosted
+// grid along the photo's bottom edge.
+//
+// The grid once collided with HomeView's floating Pass/Connect pills (they
+// are pinned to the same edge and covered its second row), and for a while
+// the stats lived on paper under a shorter photo instead. They are back on
+// the photo as designed; what changed is the card's HEIGHT — the composer
+// (SponsorApplicantCard) now ends the whole card a clear gap above the
+// pills, so nothing on it is ever covered. The one-line bio the Figma also
+// puts on the photo stays in the ABOUT section below.
 //
 // Everything on it is optional by the DATA HONESTY RULE: no strong-match
 // pill unless the fit really is strong — and no photo means an ink card
@@ -16,6 +20,7 @@
 // Gradient is react-native-svg (expo-linear-gradient isn't in the binary,
 // and a native dep would block OTA — runtimeVersion is fingerprint-based).
 
+import { BlurView } from "expo-blur";
 import { Image } from "expo-image";
 import React, { useState } from "react";
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
@@ -24,13 +29,16 @@ import { Check, Flag } from "@/components/ui/icons";
 import { Colors, Fonts } from "@/constants/theme";
 import { FontScale, hitSlopTo44 } from "@/lib/responsive";
 import { joinFacts } from "../dossierFacts";
-import type { ApplicantFacts } from "./model";
+import type { ApplicantFacts, StatCell } from "./model";
 import { heroPhotoPosition } from "./photoFraming";
 import { HERO_MIN } from "./stageLayout";
 
 interface ApplicantHeroCardProps {
   facts: ApplicantFacts;
   strength: "strong" | null;
+  /** The decisive numbers for the frosted grid (first four are shown).
+   * Omitted or empty → no grid, by the DATA HONESTY RULE. */
+  stats?: StatCell[];
   /** The card's height, computed by SponsorApplicantCard from the room above
    * the floating pills (stageLayout.heroPhotoHeight). A minHeight, so large
    * Dynamic Type grows the card instead of clipping the overlay. */
@@ -44,6 +52,7 @@ interface ApplicantHeroCardProps {
 export function ApplicantHeroCard({
   facts,
   strength,
+  stats,
   height = HERO_MIN,
   joined = false,
   onReport,
@@ -66,7 +75,16 @@ export function ApplicantHeroCard({
   });
   const subline = joinFacts([facts.currentTitle, facts.currentCompany, facts.location]);
 
-  const a11y = [facts.name, subline, strength === "strong" ? "Strong match" : null]
+  const cells = (stats ?? []).slice(0, 4);
+  const rows: StatCell[][] = [];
+  for (let i = 0; i < cells.length; i += 2) rows.push(cells.slice(i, i + 2));
+
+  const a11y = [
+    facts.name,
+    subline,
+    strength === "strong" ? "Strong match" : null,
+    ...cells.map((c) => `${c.label}: ${c.value}`),
+  ]
     .filter(Boolean)
     .join(". ");
 
@@ -161,6 +179,28 @@ export function ApplicantHeroCard({
           {facts.name}
         </Text>
         {subline ? <Text style={styles.subline}>{subline}</Text> : null}
+
+        {rows.length > 0 ? (
+          <View style={styles.grid}>
+            <BlurView tint="dark" intensity={25} style={StyleSheet.absoluteFill} />
+            <View style={[StyleSheet.absoluteFill, styles.gridTint]} />
+            {rows.map((row, i) => (
+              <View key={i} style={[styles.gridRow, i > 0 && styles.gridRowGap]}>
+                {row.map((cell) => (
+                  <View key={cell.label} style={styles.cell}>
+                    <Text style={styles.cellLabel} numberOfLines={1}>
+                      {cell.label.toUpperCase()}
+                    </Text>
+                    <Text style={styles.cellValue} numberOfLines={2}>
+                      {cell.value}
+                    </Text>
+                  </View>
+                ))}
+                {row.length === 1 ? <View style={styles.cell} /> : null}
+              </View>
+            ))}
+          </View>
+        ) : null}
       </View>
     </View>
   );
@@ -237,5 +277,32 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: Colors.paper,
     marginTop: 4,
+  },
+  // The frosted stat grid (Figma "Overlay+Border+OverlayBlur").
+  grid: {
+    marginTop: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.22)",
+    overflow: "hidden",
+    padding: 17,
+  },
+  gridTint: { backgroundColor: "rgba(255,255,255,0.10)" },
+  gridRow: { flexDirection: "row", gap: 14 },
+  gridRowGap: { marginTop: 14 },
+  cell: { flex: 1, minWidth: 0 },
+  cellLabel: {
+    fontFamily: Fonts.sansMedium,
+    fontSize: 11,
+    lineHeight: 14,
+    letterSpacing: 1.5,
+    color: "rgba(255,255,255,0.7)",
+  },
+  cellValue: {
+    fontFamily: Fonts.sansSemiBold,
+    fontSize: 16,
+    lineHeight: 21,
+    color: Colors.paper,
+    marginTop: 3,
   },
 });

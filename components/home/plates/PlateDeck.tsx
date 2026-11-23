@@ -49,7 +49,6 @@ import Animated, {
   useSharedValue,
   withDelay,
   withSequence,
-  withSpring,
   withTiming,
   type SharedValue,
 } from "react-native-reanimated";
@@ -177,13 +176,12 @@ export const PlateDeck = forwardRef<PlateDeckHandle, PlateDeckProps>(function Pl
       const should = await shouldPlayDeckSwipeHint();
       if (cancelled || !should) return;
       // A beat to let the plate's own content register first, then slide
-      // out, hold just long enough to read as deliberate, and spring back
-      // with the same natural overshoot a released drag would have.
+      // out, hold just long enough to read as deliberate, and ease back.
       nudgeX.value = withDelay(
         600,
         withSequence(
           withTiming(-40, { duration: 340, easing: Easing.out(Easing.cubic) }),
-          withDelay(260, withSpring(0, { damping: 9, stiffness: 120, mass: 0.6 })),
+          withDelay(260, withTiming(0, { duration: 320, easing: Easing.out(Easing.cubic) })),
         ),
       );
     })();

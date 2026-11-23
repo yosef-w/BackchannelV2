@@ -1,22 +1,23 @@
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
-import { Heart, MessageCircle } from "@/components/ui/icons";
+import { MessageCircle } from "@/components/ui/icons";
 import React, { useEffect } from "react";
 import { Image, Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, {
+  Easing,
   FadeIn,
-  FadeInDown,
   FadeInUp,
   FadeOut,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
-  withSequence,
+  withDelay,
   withTiming,
-  ZoomIn,
 } from "react-native-reanimated";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { useUserProfileStore } from "@/stores/useUserProfileStore";
 import { Colors, Fonts, Type } from "@/constants/theme";
-import { useResponsive } from "@/lib/responsive";
+import { FontScale, useResponsive } from "@/lib/responsive";
 
 export interface MatchedUser {
   name: string;
@@ -36,15 +37,48 @@ interface MatchCelebrationModalProps {
   onMessage: () => void;
 }
 
+// ── Motion ────────────────────────────────────────────────────────────────
+// One unhurried sequence, every move on the same long-deceleration curve
+// and none of them overshooting: the page settles, the two people glide
+// toward each other, a hairline joins them, then the words and the actions
+// arrive in order. About a second and a half end to end.
+const SETTLE = Easing.bezier(0.22, 1, 0.36, 1);
+/** How far apart the two avatars start, each side. */
+const APART = 26;
+const T = {
+  avatarsIn: 140,
+  avatarsMs: 760,
+  /** The avatars have all but arrived — the join, the haptic, the ring. */
+  meet: 620,
+  joinMs: 420,
+  ringMs: 900,
+  title: 560,
+  body: 680,
+  role: 780,
+  actions: 900,
+  textMs: 520,
+} as const;
+
+/** Text blocks rise 10pt into place as they fade — enough to feel placed,
+ * not enough to read as a slide. */
+const rise = (delay: number) =>
+  FadeInUp.delay(delay)
+    .duration(T.textMs)
+    .easing(SETTLE)
+    .withInitialValues({ opacity: 0, transform: [{ translateY: 10 }] });
+
 /**
- * Mutual-match celebration overlay. Extracted from HomeView as a
- * self-contained modal: matchRingScale/matchRingOpacity/matchRingStyle have
- * zero readers outside this UI (confirmed by a state-ownership audit before
- * extraction), so the pulse-ring animation moves in wholesale, keyed off the
- * `matchedUser` prop instead of the parent's own state. `matchedUser` itself
- * stays in HomeView (it also gates swipe logic elsewhere), as do
- * handleMatchModalDismiss/handleMatchModalMessage (they call nextProfile /
- * onNavigateToMessages), passed down as onDismiss/onMessage.
+ * The connection moment: both people said yes. A calm, near-opaque frosted
+ * page over the feed — solid enough that the words never fight the photo
+ * behind them — with the two people joined by a hairline, what happened in
+ * plain words, the role it's about, and the one thing to do next.
+ *
+ * Deliberately not a dating-app "match": no heart, no "It's a match". Two
+ * professionals were introduced.
+ *
+ * Self-contained (extracted from HomeView): keyed off the `matchedUser`
+ * prop. `matchedUser` itself stays with the caller, as do the dismiss and
+ * message handlers, passed down as onDismiss/onMessage.
  */
 export function MatchCelebrationModal({
   matchedUser,
@@ -53,38 +87,109 @@ export function MatchCelebrationModal({
   onMessage,
 }: MatchCelebrationModalProps) {
   const profileData = useUserProfileStore((state) => state.data);
-  // On iPad the card is capped (see matchCard) rather than shrunk to look
+  // On iPad the stage is capped (see `stage`) rather than shrunk to look
   // like a form, so it has real width to spare — scale the avatars up a
   // touch to fill it instead of looking sparse.
   const { isRegular } = useResponsive();
-  const avatarWrapperSize = isRegular ? 96 : 80;
-  const avatarSize = isRegular ? 88 : 74;
+  const reduceMotion = useReducedMotion();
+  const avatarSize = isRegular ? 96 : 84;
 
-  const matchRingScale = useSharedValue(0.8);
-  const matchRingOpacity = useSharedValue(0);
+  const approach = useSharedValue(0); // 0 apart → 1 together
+  const join = useSharedValue(0); // the hairline between them, 0 → 1
+  const ring = useSharedValue(0); // one soft pulse as they meet
 
-  // Pulse-ring that radiates outward from both avatars when a mutual match fires
+  // Keyed on WHO matched, not on the object: a caller that passes a fresh
+  // object each render would otherwise restart the sequence every time.
+  const matchKey = matchedUser
+    ? `${matchedUser.userId ?? ""}|${matchedUser.jobId ?? ""}|${matchedUser.name}`
+    : null;
   useEffect(() => {
-    if (matchedUser) {
-      // The app's biggest moment finally lands physically too — it was
-      // the one celebration with no haptic.
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
-        () => {},
+    if (!matchKey) return;
+    approach.value = 0;
+    join.value = 0;
+    ring.value = 0;
+    if (reduceMotion) {
+      approach.value = 1;
+      join.value = 1;
+    } else {
+      approach.value = withDelay(
+        T.avatarsIn,
+        withTiming(1, { duration: T.avatarsMs, easing: SETTLE }),
       );
-      matchRingScale.value = 0.8;
-      matchRingOpacity.value = 0;
-      matchRingScale.value = withTiming(1.9, { duration: 750 });
-      matchRingOpacity.value = withSequence(
-        withTiming(0.28, { duration: 260 }),
-        withTiming(0, { duration: 490 }),
+      join.value = withDelay(T.meet, withTiming(1, { duration: T.joinMs, easing: SETTLE }));
+      ring.value = withDelay(
+        T.meet,
+        withTiming(1, { duration: T.ringMs, easing: Easing.out(Easing.quad) }),
       );
     }
-  }, [matchedUser, matchRingOpacity, matchRingScale]);
+    // The haptic lands as the two meet, not when the page opens.
+    const haptic = setTimeout(
+      () => {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+          () => {},
+        );
+      },
+      reduceMotion ? 0 : T.meet,
+    );
+    return () => clearTimeout(haptic);
+  }, [matchKey, reduceMotion, approach, join, ring]);
 
-  const matchRingStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: matchRingScale.value }],
-    opacity: matchRingOpacity.value,
+  const leftStyle = useAnimatedStyle(() => ({
+    opacity: approach.value,
+    transform: [{ translateX: -APART * (1 - approach.value) }],
   }));
+  const rightStyle = useAnimatedStyle(() => ({
+    opacity: approach.value,
+    transform: [{ translateX: APART * (1 - approach.value) }],
+  }));
+  const joinStyle = useAnimatedStyle(() => ({
+    opacity: join.value,
+    transform: [{ scaleX: join.value }],
+  }));
+  const ringStyle = useAnimatedStyle(() => ({
+    opacity: 0.2 * (1 - ring.value) * (ring.value > 0 ? 1 : 0),
+    transform: [{ scale: 1 + 0.42 * ring.value }],
+  }));
+
+  const first = (matchedUser?.name || "").trim().split(/\s+/)[0] || "";
+  const role = (matchedUser?.jobTitle || "").trim();
+  const myInitial = (profileData?.personal?.firstName || "Y")[0].toUpperCase();
+  const myImage = profileData?.personal?.profileImage;
+  const sentence = first
+    ? userType === "sponsor"
+      ? `${first} is interested in your role, and you chose to connect.`
+      : `${first} can sponsor you, and you're both interested.`
+    : "You're both interested.";
+
+  const avatar = (uri: string | undefined | null, initial: string) => (
+    <View style={[styles.avatarFrame, { width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2 }]}>
+      {uri ? (
+        <Image
+          source={{ uri }}
+          style={{
+            width: avatarSize - 8,
+            height: avatarSize - 8,
+            borderRadius: (avatarSize - 8) / 2,
+          }}
+        />
+      ) : (
+        <View
+          style={[
+            styles.avatarInitial,
+            {
+              width: avatarSize - 8,
+              height: avatarSize - 8,
+              borderRadius: (avatarSize - 8) / 2,
+            },
+          ]}
+        >
+          <Text style={styles.avatarInitialText} maxFontSizeMultiplier={1}>
+            {initial}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
 
   return (
     <Modal
@@ -92,178 +197,115 @@ export function MatchCelebrationModal({
       transparent
       animationType="none"
       statusBarTranslucent
+      onRequestClose={onDismiss}
     >
       <Animated.View
-        entering={FadeIn.duration(200)}
+        entering={FadeIn.duration(260)}
         exiting={FadeOut.duration(200)}
         style={StyleSheet.absoluteFill}
       >
-        <BlurView intensity={92} style={StyleSheet.absoluteFill} tint="light" />
+        {/* Frost for depth, then a near-solid paper wash for legibility:
+            the text reads the same over any photo. */}
+        <BlurView intensity={70} style={StyleSheet.absoluteFill} tint="light" />
+        <View style={[StyleSheet.absoluteFill, styles.wash]} />
 
-        <View style={styles.matchModalOverlay}>
-          <Animated.View
-            entering={ZoomIn.springify().damping(14).stiffness(180)}
-            style={styles.matchCard}
-          >
-            {/* Eyebrow — the caps voice, no pill */}
-            <Animated.View entering={FadeInDown.delay(150).duration(350)}>
-              <Text style={styles.matchEyebrow}>A MUTUAL MATCH</Text>
-            </Animated.View>
-
-            {/* Avatar row */}
-            <Animated.View
-              entering={FadeInUp.delay(100).duration(400)}
-              style={styles.matchAvatarRow}
+        <View style={styles.overlay} accessibilityViewIsModal>
+          <View style={styles.stage}>
+            <Animated.Text
+              entering={FadeIn.delay(80).duration(420)}
+              style={styles.eyebrow}
+              maxFontSizeMultiplier={FontScale.label}
             >
-              {/* Current user's avatar */}
-              <View
-                style={[
-                  styles.matchAvatarWrapper,
-                  { width: avatarWrapperSize, height: avatarWrapperSize },
-                ]}
-              >
+              YOU BOTH SAID YES
+            </Animated.Text>
+
+            {/* The two people, joined */}
+            <View
+              style={styles.avatarRow}
+              accessible
+              accessibilityLabel={first ? `You and ${matchedUser?.name}` : "You are connected"}
+            >
+              <Animated.View style={leftStyle}>
                 <Animated.View
                   style={[
-                    styles.matchAvatarRing,
-                    {
-                      width: avatarWrapperSize,
-                      height: avatarWrapperSize,
-                      borderRadius: avatarWrapperSize / 2,
-                    },
-                    matchRingStyle,
+                    styles.ring,
+                    { width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2 },
+                    ringStyle,
                   ]}
                 />
-                {profileData?.personal?.profileImage ? (
-                  <Image
-                    source={{ uri: profileData.personal.profileImage }}
-                    style={[
-                      styles.matchAvatar,
-                      {
-                        width: avatarSize,
-                        height: avatarSize,
-                        borderRadius: avatarSize / 2,
-                      },
-                    ]}
-                  />
-                ) : (
-                  <View
-                    style={[
-                      styles.matchAvatar,
-                      styles.matchAvatarInitial,
-                      {
-                        width: avatarSize,
-                        height: avatarSize,
-                        borderRadius: avatarSize / 2,
-                      },
-                    ]}
-                  >
-                    <Text style={styles.matchAvatarInitialText}>
-                      {(profileData?.personal?.firstName || "Y")[0].toUpperCase()}
-                    </Text>
-                  </View>
-                )}
-              </View>
-
-              {/* Connector between the two avatars */}
-              <View style={styles.matchSparkWrapper}>
-                <Heart size={18} color={Colors.ink} strokeWidth={2.2} />
-              </View>
-
-              {/* Matched user's avatar */}
-              <View
-                style={[
-                  styles.matchAvatarWrapper,
-                  { width: avatarWrapperSize, height: avatarWrapperSize },
-                ]}
-              >
+                {avatar(myImage, myInitial)}
+              </Animated.View>
+              <Animated.View style={[styles.join, joinStyle]} />
+              <Animated.View style={rightStyle}>
                 <Animated.View
                   style={[
-                    styles.matchAvatarRing,
-                    {
-                      width: avatarWrapperSize,
-                      height: avatarWrapperSize,
-                      borderRadius: avatarWrapperSize / 2,
-                    },
-                    matchRingStyle,
+                    styles.ring,
+                    { width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2 },
+                    ringStyle,
                   ]}
                 />
-                {matchedUser?.image ? (
-                  <Image
-                    source={{ uri: matchedUser.image }}
-                    style={[
-                      styles.matchAvatar,
-                      {
-                        width: avatarSize,
-                        height: avatarSize,
-                        borderRadius: avatarSize / 2,
-                      },
-                    ]}
-                  />
-                ) : (
-                  <View
-                    style={[
-                      styles.matchAvatar,
-                      styles.matchAvatarInitial,
-                      {
-                        width: avatarSize,
-                        height: avatarSize,
-                        borderRadius: avatarSize / 2,
-                      },
-                    ]}
-                  >
-                    <Text style={styles.matchAvatarInitialText}>
-                      {(matchedUser?.name || "?")[0].toUpperCase()}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            </Animated.View>
+                {avatar(matchedUser?.image, (matchedUser?.name || "?")[0].toUpperCase())}
+              </Animated.View>
+            </View>
 
-            {/* Title */}
-            <Animated.View entering={FadeInUp.delay(300).duration(400)}>
-              <Text style={styles.matchTitle}>
-                It’s a <Text style={styles.matchTitleAccent}>match.</Text>
+            <Animated.View entering={reduceMotion ? undefined : rise(T.title)}>
+              <Text style={styles.title} accessibilityRole="header">
+                You&apos;re <Text style={styles.titleAccent}>connected.</Text>
               </Text>
             </Animated.View>
 
-            {/* Subtitle */}
-            <Animated.View entering={FadeInUp.delay(400).duration(400)}>
-              <Text style={styles.matchSubtitle}>
-                {userType === "applicant"
-                  ? `You and ${
-                      matchedUser?.name ?? "your sponsor"
-                    } are both interested${
-                      matchedUser?.jobTitle ? ` in ${matchedUser.jobTitle}` : ""
-                    }`
-                  : `You and ${
-                      matchedUser?.name ?? "this applicant"
-                    } are both interested in connecting`}
-              </Text>
+            <Animated.View entering={reduceMotion ? undefined : rise(T.body)}>
+              <Text style={styles.sentence}>{sentence}</Text>
             </Animated.View>
 
-            {/* Action buttons */}
+            {/* The role this is about — one ruled line, the ledger voice. */}
+            {role ? (
+              <Animated.View
+                entering={reduceMotion ? undefined : rise(T.role)}
+                style={styles.roleRow}
+              >
+                <Text style={styles.roleKey} maxFontSizeMultiplier={FontScale.label}>
+                  ROLE
+                </Text>
+                <Text style={styles.roleValue} numberOfLines={2}>
+                  {role}
+                </Text>
+              </Animated.View>
+            ) : null}
+
             <Animated.View
-              entering={FadeInUp.delay(500).duration(400)}
-              style={styles.matchActions}
+              entering={reduceMotion ? undefined : rise(T.actions)}
+              style={styles.actions}
             >
-              <TouchableOpacity
-                style={styles.matchMsgBtn}
+              <PressableScale
+                style={styles.primary}
+                pressedScale={0.97}
                 onPress={onMessage}
-                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel={first ? `Message ${first}` : "Send a message"}
               >
                 <MessageCircle size={18} color={Colors.paper} />
-                <Text style={styles.matchMsgBtnText}>MESSAGE NOW</Text>
-              </TouchableOpacity>
+                <Text
+                  style={styles.primaryText}
+                  numberOfLines={1}
+                  maxFontSizeMultiplier={FontScale.label}
+                >
+                  {first ? `MESSAGE ${first.toUpperCase()}` : "SEND A MESSAGE"}
+                </Text>
+              </PressableScale>
 
               <TouchableOpacity
                 onPress={onDismiss}
                 activeOpacity={0.7}
-                style={styles.matchSkipRow}
+                style={styles.secondary}
+                accessibilityRole="button"
               >
-                <Text style={styles.matchSkipBtnText}>KEEP GOING</Text>
+                <Text style={styles.secondaryText} maxFontSizeMultiplier={FontScale.label}>
+                  {userType === "sponsor" ? "KEEP REVIEWING" : "KEEP BROWSING"}
+                </Text>
               </TouchableOpacity>
             </Animated.View>
-          </Animated.View>
+          </View>
         </View>
       </Animated.View>
     </Modal>
@@ -271,126 +313,142 @@ export function MatchCelebrationModal({
 }
 
 const styles = StyleSheet.create({
-  matchModalOverlay: {
+  // Near-solid: the frost underneath only softens the edges of what's
+  // behind; it never has to carry the contrast.
+  wash: { backgroundColor: "rgba(255,255,255,0.93)" },
+  overlay: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 28,
+    paddingHorizontal: 32,
   },
-  // The stage — no card, no shadow: the moment plays on the frosted page
-  // itself, the way the Broadcast beats do.
-  matchCard: {
+  // No card, no shadow: the moment plays on the page itself. Capped so the
+  // action pill doesn't stretch across an iPad.
+  stage: {
     width: "100%",
-    // Capped like DeckDoneCard's 420 — a celebratory full-screen moment,
-    // so bounded-but-wide rather than shrunk to a form column. Uncapped,
-    // the 54pt action pills below stretched to ~952pt on a 13" iPad.
-    maxWidth: 460,
+    maxWidth: 420,
     alignSelf: "center",
     alignItems: "center",
-    paddingHorizontal: 12,
   },
-  matchEyebrow: {
-    fontFamily: Fonts.sansBold,
+  eyebrow: {
+    fontFamily: Fonts.sansSemiBold,
     fontSize: 11,
     letterSpacing: 2.4,
     color: Colors.muted,
-    marginBottom: 26,
+    marginBottom: 28,
   },
-  matchAvatarRow: {
+  avatarRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
-    marginBottom: 24,
+    marginBottom: 28,
   },
-  matchAvatarWrapper: {
-    position: "relative",
+  // A paper mat inside a hairline ink ring — a framed portrait, not a
+  // sticker.
+  avatarFrame: {
     alignItems: "center",
     justifyContent: "center",
-    width: 80,
-    height: 80,
-  },
-  matchAvatarRing: {
-    position: "absolute",
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    borderWidth: 2,
+    backgroundColor: Colors.paper,
+    borderWidth: 1,
     borderColor: Colors.ink,
   },
-  matchAvatar: {
-    width: 74,
-    height: 74,
-    borderRadius: 37,
-    borderWidth: 3,
-    borderColor: Colors.paper,
-  },
-  matchAvatarInitial: {
+  avatarInitial: {
     backgroundColor: Colors.ink,
     alignItems: "center",
     justifyContent: "center",
   },
-  matchAvatarInitialText: {
+  avatarInitialText: {
     fontFamily: Fonts.serif,
     color: Colors.paper,
-    fontSize: 28,
+    fontSize: 30,
   },
-  matchSparkWrapper: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: Colors.surface,
+  ring: {
+    position: "absolute",
     borderWidth: 1,
-    borderColor: Colors.border,
-    alignItems: "center",
-    justifyContent: "center",
+    borderColor: Colors.ink,
   },
-  matchTitle: {
+  join: {
+    width: 36,
+    height: 1,
+    backgroundColor: Colors.ink,
+  },
+  title: {
     ...Type.title,
+    fontSize: 36,
+    lineHeight: 40,
     color: Colors.ink,
-    marginBottom: 8,
     textAlign: "center",
   },
   // The site's .hero-title em rule — italic muted accent word.
-  matchTitleAccent: {
+  titleAccent: {
     fontFamily: Fonts.serifItalic,
     color: Colors.muted,
   },
-  matchSubtitle: {
-    fontFamily: Fonts.sansLight,
-    fontSize: 14,
+  sentence: {
+    fontFamily: Fonts.sans,
+    fontSize: 16,
+    lineHeight: 24,
     color: Colors.body,
     textAlign: "center",
-    lineHeight: 21,
-    marginBottom: 28,
+    marginTop: 10,
     paddingHorizontal: 4,
   },
-  matchActions: {
-    width: "100%",
-    gap: 10,
+  roleRow: {
+    alignSelf: "stretch",
+    flexDirection: "row",
+    alignItems: "baseline",
+    justifyContent: "space-between",
+    gap: 16,
+    marginTop: 24,
+    paddingVertical: 13,
+    borderTopWidth: 1,
+    borderTopColor: Colors.ink,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
   },
-  matchMsgBtn: {
-    height: 54,
-    borderRadius: 27,
+  roleKey: {
+    fontFamily: Fonts.sansSemiBold,
+    fontSize: 11,
+    letterSpacing: 1.5,
+    color: Colors.muted,
+  },
+  roleValue: {
+    flex: 1,
+    fontFamily: Fonts.serif,
+    fontSize: 18,
+    lineHeight: 23,
+    color: Colors.ink,
+    textAlign: "right",
+  },
+  actions: {
+    alignSelf: "stretch",
+    marginTop: 28,
+    gap: 6,
+  },
+  primary: {
+    minHeight: 56,
+    borderRadius: 28,
     backgroundColor: Colors.ink,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
+    gap: 10,
+    paddingHorizontal: 20,
   },
-  matchMsgBtnText: {
-    fontFamily: Fonts.sansBold,
-    fontSize: 12,
-    letterSpacing: 1.8,
+  primaryText: {
+    fontFamily: Fonts.sansSemiBold,
+    fontSize: 13,
+    letterSpacing: 2,
     color: Colors.paper,
+    flexShrink: 1,
   },
   // Quiet text, not a second bordered button beside the filled pill.
-  matchSkipRow: {
-    height: 44,
+  secondary: {
+    minHeight: 44,
     alignItems: "center",
     justifyContent: "center",
   },
-  matchSkipBtnText: {
-    fontFamily: Fonts.sansBold,
+  secondaryText: {
+    fontFamily: Fonts.sansSemiBold,
     fontSize: 12,
     letterSpacing: 1.8,
     color: Colors.muted,

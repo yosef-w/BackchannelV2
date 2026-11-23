@@ -35,7 +35,7 @@ export function ExpandableText({
   numberOfLines = 4,
   style,
   toggleStyle,
-  readMoreLabel = "Read more",
+  readMoreLabel = "Show more",
   readLessLabel = "Show less",
 }: ExpandableTextProps) {
   const [expanded, setExpanded] = useState(false);

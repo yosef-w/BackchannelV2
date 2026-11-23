@@ -19,6 +19,7 @@
 // while PREMIUM_ENABLED is true, since presentPaywall() short-circuits
 // otherwise. Dormant by construction when the flag is off.
 
+import { DAILY_DECK_SIZE } from "@/constants/config";
 import { Search } from "@/components/ui/icons";
 import React, { useEffect } from "react";
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -32,7 +33,7 @@ import Animated, {
 import Svg, { Path } from "react-native-svg";
 import { Colors, Fonts } from "@/constants/theme";
 import {
-  backOut,
+  settle,
   type CinemaBeat,
   easeIn,
   easeOut,
@@ -125,7 +126,7 @@ function DeckCard({
   const style = useAnimatedStyle(() => {
     const tv = t.value;
     const inP = easeOut(win(tv, 0.02, 0.1));
-    const p = backOut(win(tv, SPREAD_A, SPREAD_B));
+    const p = settle(win(tv, SPREAD_A, SPREAD_B));
     const x = card.packed + (card.spread - card.packed) * p;
     const rot = card.r + (card.rs - card.r) * p;
     return {
@@ -204,7 +205,7 @@ function CelebrationScene({ onDone }: { onDone: () => void }) {
   // The second door: the marketplace tile springs in on the right as
   // the deck clears left.
   const marketTile = useAnimatedStyle(() => {
-    const p = backOut(win(t.value, 0.456, 0.632));
+    const p = settle(win(t.value, 0.456, 0.632));
     return {
       opacity: Math.min(1, p * 2),
       transform: [
@@ -216,7 +217,7 @@ function CelebrationScene({ onDone }: { onDone: () => void }) {
   });
 
   const chipDeck = useAnimatedStyle(() => {
-    const p = backOut(win(t.value, 0.441, 0.588));
+    const p = settle(win(t.value, 0.441, 0.588));
     return {
       opacity: Math.min(1, p * 2),
       transform: [{ scale: 0.7 + p * 0.3 }],
@@ -224,7 +225,7 @@ function CelebrationScene({ onDone }: { onDone: () => void }) {
   });
 
   const chipMarket = useAnimatedStyle(() => {
-    const p = backOut(win(t.value, 0.515, 0.662));
+    const p = settle(win(t.value, 0.515, 0.662));
     return {
       opacity: Math.min(1, p * 2),
       transform: [{ scale: 0.7 + p * 0.3 }],
@@ -256,7 +257,7 @@ function CelebrationScene({ onDone }: { onDone: () => void }) {
                 <Path d={LEFT_TEAR_PATH} fill={Colors.ink} />
               </Svg>
               <View style={[styles.bandTextClip, { left: 0 }]}>
-                <Text style={styles.bandText}>MEMBERS ONLY</Text>
+                <Text style={styles.bandText}>PREMIUM</Text>
               </View>
             </Animated.View>
             <Animated.View
@@ -266,7 +267,7 @@ function CelebrationScene({ onDone }: { onDone: () => void }) {
                 <Path d={RIGHT_TEAR_PATH} fill={Colors.ink} />
               </Svg>
               <View style={[styles.bandTextClip, { left: -HALF_W }]}>
-                <Text style={styles.bandText}>MEMBERS ONLY</Text>
+                <Text style={styles.bandText}>PREMIUM</Text>
               </View>
             </Animated.View>
           </Animated.View>
@@ -284,10 +285,10 @@ function CelebrationScene({ onDone }: { onDone: () => void }) {
 
           <View style={styles.chipRow}>
             <Animated.View style={[styles.chip, chipDeck]}>
-              <Text style={styles.chipText}>DAILY TEN</Text>
+              <Text style={styles.chipText}>{DAILY_DECK_SIZE.premium} A DAY</Text>
             </Animated.View>
             <Animated.View style={[styles.chip, chipMarket]}>
-              <Text style={styles.chipText}>THE MARKET</Text>
+              <Text style={styles.chipText}>ALL ROLES</Text>
             </Animated.View>
           </View>
         </View>

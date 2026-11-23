@@ -122,7 +122,7 @@ export default function ResetPasswordRoute() {
     // underneath indefinitely — the same bug already fixed at every other
     // cross-auth-boundary exit point (sign-in.tsx, verify-email.tsx,
     // onboarding.tsx, splash.tsx), just missed here.
-    router.dismissAll();
+    if (router.canDismiss()) router.dismissAll();
     router.replace("/sign-in");
   };
 

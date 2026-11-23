@@ -49,7 +49,6 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withTiming,
-  ZoomIn,
 } from "react-native-reanimated";
 import Svg, { Circle } from "react-native-svg";
 import {
@@ -912,7 +911,7 @@ export function ReferralSigningScreen({
                 </Text>
                 {stamped && (
                   <Animated.View
-                    entering={ZoomIn.duration(260)}
+                    entering={FadeIn.duration(260)}
                     style={styles.stamp}
                   >
                     <Check size={34} color={Colors.paper} strokeWidth={3.5} />
@@ -1011,7 +1010,7 @@ export function ReferralSigningScreen({
                 contentContainerStyle={styles.receiptScroll}
               >
                 <Animated.View
-                  entering={ZoomIn.delay(120).duration(320)}
+                  entering={FadeIn.delay(120).duration(320)}
                   style={styles.receiptCheck}
                 >
                   <Check color={Colors.paper} size={32} strokeWidth={3} />

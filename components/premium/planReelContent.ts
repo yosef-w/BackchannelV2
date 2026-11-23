@@ -8,7 +8,7 @@
 // "problem act" to resolve once — every beat is a benefit worth replaying.
 
 import type { CaptionSegment, CinemaBeat } from "@/components/cinema/engine";
-import { DAILY_LIKE_LIMITS } from "@/constants/config";
+import { DAILY_DECK_SIZE, DAILY_LIKE_LIMITS } from "@/constants/config";
 
 export const BEAT_COUNT = 3;
 export const BEAT_MS = 4400;
@@ -76,7 +76,7 @@ export const HEADLINES: readonly CaptionSegment[][] = [
 ];
 
 export const SUBS: readonly string[] = [
-  `Express interest in ${DAILY_LIKE_LIMITS.premium} roles from today's deck. Free stops at ${DAILY_LIKE_LIMITS.free}.`,
+  `See ${DAILY_DECK_SIZE.premium} roles a day and express interest in ${DAILY_LIKE_LIMITS.premium}. Free stops at ${DAILY_DECK_SIZE.free} and ${DAILY_LIKE_LIMITS.free}.`,
   "A real person at that company hears about you. Your first is on us; members never stop.",
   "Everyone can browse sponsored roles. Members are the ones who raise a hand.",
 ];

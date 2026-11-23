@@ -241,7 +241,7 @@ function DriftScene({ lines }: { lines: string[] }) {
         </Animated.View>
       ))}
       <Animated.View entering={FadeInDown.delay(800 + lines.length * 800).duration(650)}>
-        <Text style={styles.kicker}>STILL READING · THIS IS YOU</Text>
+        <Text style={styles.kicker}>READING YOUR RÉSUMÉ</Text>
       </Animated.View>
     </>
   );

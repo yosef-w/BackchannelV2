@@ -96,7 +96,19 @@ class ApiClient {
     return {
       ...(jsonContentType ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...this.getActiveRoleHeader(),
     };
+  }
+
+  /**
+   * Which side of the account this request is for (docs/DUAL_SIDES.md).
+   * An account can hold a sponsor side and a job-search side, so the
+   * server can no longer infer the role from the user alone. A backend
+   * that predates dual sides ignores the header.
+   */
+  private getActiveRoleHeader(): Record<string, string> {
+    const role = useAuthStore.getState().role;
+    return role ? { "X-Active-Role": role } : {};
   }
 
   /** Park a request until the in-progress refresh resolves. */
@@ -315,6 +327,7 @@ class ApiClient {
         ...options.headers,
         ...(jsonContentType ? { "Content-Type": "application/json" } : {}),
         Authorization: `Bearer ${token}`,
+        ...this.getActiveRoleHeader(),
       },
     };
     const endpointForReporting = url.replace(this.baseUrl, "");

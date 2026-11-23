@@ -943,21 +943,36 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
       const { useOnboardingStore } = await import("./useOnboardingStore");
       const profile = await authApi.getProfile();
 
-      // Set user type based on backend flags
-      const userType = profile.IS_SPONSOR ? "sponsor" : "applicant";
-      useOnboardingStore.getState().setUserType(userType);
-      set({ userId: profile.USER_ID ?? null });
-      // Self-heal a missing auth role from the same flag. SSO accounts
+      // Which side this fetch is for. An account that holds both sides
+      // (docs/DUAL_SIDES.md) reads the ACTIVE one from the auth store —
+      // the response then carries both role sub-objects and IS_SPONSOR
+      // can't choose between them. Everyone else: the backend flag.
+      // Dynamic imports for the same cycle reason as authApi above.
+      const { useAuthStore } = await import("./useAuthStore");
+      const { parseRoles, roleToUserType } = await import("../lib/sides");
+      const backendRole = profile.IS_SPONSOR ? "Sponsor" : "Applicant";
+      // The sides the server says the account holds. A backend that
+      // predates dual sides sends no list, and then the locally-known
+      // sides stand (a development preview keeps its second side there).
+      const serverRoles = parseRoles(profile.ROLES);
+      if (Array.isArray(profile.ROLES)) {
+        const { useSideSwitchStore } = await import("../lib/switchSide");
+        useSideSwitchStore.setState({ serverSupportsSides: true });
+      }
+      if (serverRoles.length > 0) {
+        await useAuthStore.getState().setRoles(serverRoles);
+      }
+      // Self-heal a missing auth role from the backend flag. SSO accounts
       // created before setRole existed (and any future path that lands
       // here role-less) otherwise stay role-less forever, and the tabs
-      // shell keeps guessing from URL params. Dynamic import for the same
-      // cycle reason as authApi above.
-      const { useAuthStore } = await import("./useAuthStore");
+      // shell keeps guessing from URL params.
       if (!useAuthStore.getState().role) {
-        await useAuthStore
-          .getState()
-          .setRole(profile.IS_SPONSOR ? "Sponsor" : "Applicant");
+        await useAuthStore.getState().setRole(backendRole);
       }
+      const activeRole = useAuthStore.getState().role ?? backendRole;
+      const userType = roleToUserType(activeRole);
+      useOnboardingStore.getState().setUserType(userType);
+      set({ userId: profile.USER_ID ?? null });
 
       // Preserve all locally-stored data so fields not returned by the backend
       // (insights, skills, address details, portfolio, etc.) are not wiped.
@@ -979,8 +994,16 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
       };
 
       // Skills: prefer backend value if present, fall back to local
+      // With both role sub-objects present (a dual-sides account), only the
+      // active side's values count — one side's skills and answers must
+      // never show up on the other.
+      const ownProfile =
+        userType === "sponsor" ? profile.sponsor_profile : profile.applicant_profile;
+      const dualProfile = !!profile.applicant_profile && !!profile.sponsor_profile;
       const backendSkills: string[] = parseVariant(
-        profile.applicant_profile?.SKILLS || profile.sponsor_profile?.SKILLS,
+        dualProfile
+          ? ownProfile?.SKILLS
+          : profile.applicant_profile?.SKILLS || profile.sponsor_profile?.SKILLS,
       );
       const mergedSkills =
         backendSkills.length > 0 ? backendSkills : existing.skills;
@@ -988,8 +1011,10 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
       // Backend contract: insight rows carry both question and answer; the
       // cast asserts that (same runtime as the previously-untyped parse).
       const backendInsights = parseVariant(
-        profile.applicant_profile?.INSIGHTS ||
-          profile.sponsor_profile?.INSIGHTS,
+        dualProfile
+          ? ownProfile?.INSIGHTS
+          : profile.applicant_profile?.INSIGHTS ||
+              profile.sponsor_profile?.INSIGHTS,
       ) as { question: string; answer: string }[];
       const mergedInsights =
         backendInsights.length > 0 ? backendInsights : existing.insights;
@@ -1117,7 +1142,11 @@ export const useUserProfileStore = create<UserProfileStore>((set, get) => ({
           // BIO is saved via PATCH but not yet returned by GET /api/profile/.
           // Falls back to existing local value; will auto-populate once backend
           // starts returning the field (docs/BACKEND_CHANGES_NEEDED.md §B).
-          summary: profile.BIO || existing.professional.summary,
+          // A two-sided account reads the active side's own bio (never
+          // the other side's); everyone else, the shared one.
+          summary:
+            (dualProfile ? ownProfile?.BIO : profile.BIO) ||
+            (dualProfile ? "" : existing.professional.summary),
           desiredSalary: existing.professional.desiredSalary,
           availableStartDate: existing.professional.availableStartDate,
           targetIndustry:

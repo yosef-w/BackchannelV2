@@ -74,7 +74,7 @@ const SPONSOR_INSIGHT_FIELDS: {
   {
     key: "insiderInsights",
     Icon: Info,
-    title: "Everything else worth knowing",
+    title: "Other notes",
     subtitle: "Interview process, growth path, comp. Anything they should know.",
     placeholder:
       "Interview format, timeline, promotion path, equity situation…",

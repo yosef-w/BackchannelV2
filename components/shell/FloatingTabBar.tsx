@@ -139,15 +139,10 @@ type FloatingTabBarProps = BottomTabBarProps & {
   badges?: Partial<Record<string, number>>;
 };
 
-// A gentle spring — the original (damping: 20, stiffness: 220, ratio≈0.67)
-// read as too bouncy, but a fully flat ease-out read as too mechanical; a
-// touch of overshoot is what "casual slide" actually wants. Uses the
-// duration+dampingRatio config rather than raw damping/stiffness/mass
-// because it's the one that's actually easy to reason about: 1.0 is
-// critically damped (no overshoot at all), and every step below that
-// is "how much bounce", not a physics unit you have to eyeball. 0.85 is
-// a single small, quick settle — present, not springy.
-const INDICATOR_SPRING = { duration: 260, dampingRatio: 0.85 };
+// Critically damped (dampingRatio 1): the pill glides to the new tab and
+// stops, no overshoot. Duration+dampingRatio config rather than raw
+// damping/stiffness/mass so the feel is easy to reason about.
+const INDICATOR_SPRING = { duration: 260, dampingRatio: 1 };
 
 export function FloatingTabBar({
   state,

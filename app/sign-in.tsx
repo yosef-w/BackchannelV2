@@ -36,7 +36,7 @@ export default function SignInScreen() {
       // to its root before we land on dashboard, so nothing pre-auth stays
       // alive in the background.
       onLoginComplete={() => {
-        router.dismissAll();
+        if (router.canDismiss()) router.dismissAll();
         router.replace("/dashboard");
       }}
       // Both exits lead to role selection: a brand-new SSO account

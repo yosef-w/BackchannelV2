@@ -50,7 +50,6 @@ import {
   View,
 } from "react-native";
 import Animated, {
-  ZoomIn,
   FadeIn,
   FadeInDown,
   FadeInUp,
@@ -386,7 +385,7 @@ function MarketplaceJobCard({
               ))}
             </View>
             {isDone ? (
-              <Animated.View entering={ZoomIn.duration(240)} style={styles.doneBadge}>
+              <Animated.View entering={FadeIn.duration(240)} style={styles.doneBadge}>
                 <Check size={10} color={Colors.muted} strokeWidth={3} />
                 <Text style={styles.doneBadgeText}>{doneLabel.toUpperCase()}</Text>
               </Animated.View>
@@ -1093,7 +1092,7 @@ export function ApplicantJobsBrowseView() {
                   context={
                     membersCue
                       ? {
-                          title: "Members only",
+                          title: "Premium",
                           sub: "Unlock to express interest in sponsored roles",
                           icon: (
                             <Lock size={13} color={Colors.ink} strokeWidth={2.5} />
@@ -1123,7 +1122,7 @@ export function ApplicantJobsBrowseView() {
                             sub: "Members request on every role",
                           }
                         : {
-                            title: "Members only",
+                            title: "Premium",
                             sub: "Unlock to request on every role",
                             icon: (
                               <Lock size={13} color={Colors.ink} strokeWidth={2.5} />

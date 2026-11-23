@@ -70,6 +70,7 @@ import {
   View,
 } from "react-native";
 import Animated, {
+  FadeIn,
   FadeInDown,
   FadeInUp,
   useAnimatedScrollHandler,
@@ -78,7 +79,6 @@ import Animated, {
   withRepeat,
   withSequence,
   withTiming,
-  ZoomIn,
 } from "react-native-reanimated";
 import { useJobsStore } from "@/stores/useJobsStore";
 import { transformMyJobRow } from "@/components/jobs/jobTransforms";
@@ -93,8 +93,9 @@ import { DeckDoneCard } from "./home/DeckDoneCard";
 import { FullBioModal } from "./home/FullBioModal";
 import { GetSponsorModal } from "./home/GetSponsorModal";
 import { JobCardContent } from "./home/JobCardContent";
+import { JobBriefCard } from "./home/applicant/JobBriefCard";
+import { buildJobFacts } from "./home/applicant/jobFacts";
 import { PlateDeck } from "./home/plates/PlateDeck";
-import { DecisionStamp, STAMP_MS } from "./home/DecisionStamp";
 import { VerdictBar } from "./home/VerdictBar";
 import {
   buildApplicantPlates,
@@ -117,6 +118,8 @@ import { ConfirmPop } from "@/components/cinema/ConfirmPop";
 import { QuietAction } from "@/components/matches/JobSheetKit";
 import {
   DAILY_LIKE_LIMITS,
+  getDeckSize,
+  APPLICANT_DECK_V2,
   PLATES_ENABLED,
   PREMIUM_ENABLED,
   SPONSOR_CARD_LAYOUT,
@@ -124,7 +127,6 @@ import {
   getDailyLikeCap,
 } from "@/constants/config";
 import {
-  ControlsFade,
   DecisionPills,
   SponsorApplicantCard,
   FLOATING_NAV_CLEARANCE,
@@ -170,6 +172,9 @@ function parseStringList(v: string | string[] | null | undefined): string[] {
   if (Array.isArray(v)) {
     return v.filter((x): x is string => typeof x === "string").map((x) => x.trim()).filter(Boolean);
   }
+  // Anything else (an object, a number) has no list to offer. The type says
+  // it can't arrive; a profile row proved otherwise and crashed the feed.
+  if (typeof v !== "string") return [];
   const trimmed = v.trim();
   if (trimmed.startsWith("[")) return parseStringList(parseVariant<string>(trimmed));
   return trimmed.split(",").map((x) => x.trim()).filter(Boolean);
@@ -220,9 +225,6 @@ interface HomeViewProps {
   onShowPublicProfile?: (userData: PublicProfileUserData) => void;
 }
 
-// Exported so MainApp can compute "cards remaining" for the unfinished-deck
-// local-notification reminder without duplicating this constant.
-export const DECK_SIZE = 10;
 // Horizontal padding of the deck page — PlateDeck cancels it so plates run
 // edge to edge while the full read below keeps the normal column.
 // Matches Matches/Messages tabs' outer horizontal padding — was 24 (off
@@ -353,6 +355,22 @@ export function HomeView({
   // Premium — the end-of-deck card opens our PremiumSheet (plans + purchase
   // in one sheet); a completed purchase sends the held likes below.
   const isPremium = useSubscriptionStore((state) => state.isPremium);
+  // 10 cards a day free, 30 for members (constants/config DAILY_DECK_SIZE).
+  const deckSize = getDeckSize(isPremium);
+  // Becoming a member mid-day: drop today's (10-card) deck so it's fetched
+  // again at the member size. Cards already swiped are never re-served, so
+  // the new deck is all fresh. Only on the free → member edge.
+  const [deckRefresh, setDeckRefresh] = useState(0);
+  const wasPremiumRef = useRef(isPremium);
+  useEffect(() => {
+    const was = wasPremiumRef.current;
+    wasPremiumRef.current = isPremium;
+    if (was || !isPremium) return;
+    deckCacheRef.current.clear();
+    useJobsStore.getState().setJobs([]);
+    useJobsStore.getState().resetNavigation();
+    setDeckRefresh((n) => n + 1);
+  }, [isPremium]);
   const [premiumSheetOpen, setPremiumSheetOpen] = useState(false);
 
   // Daily like cap — see constants/config.ts's DAILY_LIKE_LIMITS and
@@ -603,9 +621,6 @@ export function HomeView({
     (index: number, count: number) => setPlateProgress({ index, count }),
     [],
   );
-  // The commit beat: the accept verb stamps the card (DecisionStamp) for
-  // the moment before it lifts away.
-  const [stamp, setStamp] = useState<string | null>(null);
   // Pulsing LIVE dot for the "No Applicants Yet" empty state. Loops
   // a gentle opacity oscillation so the indicator reads as active /
   // running, the way streaming UIs and status dashboards do it.
@@ -649,25 +664,25 @@ export function HomeView({
     userType === "sponsor"
       ? sponsorProfiles[currentProfileIndex % sponsorProfiles.length]
       : applicantJobs[currentProfileIndex % applicantJobs.length];
-  // Capped at the deck's ACTUAL length, not just DECK_SIZE (10) — a sponsor
+  // Capped at the deck's ACTUAL length, not just the deck size — a sponsor
   // with a small applicant pool, or an applicant in a thin niche, can
   // easily get fewer than 10 back from the backend. Without the cap,
   // currentData's index-modulo-length wraps around and starts silently
   // re-showing already-passed cards (progress keeps climbing toward 10,
-  // dishonestly implying fresh content) long before progress > DECK_SIZE
+  // dishonestly implying fresh content) long before progress > the deck size
   // would ever trip. activeDeckLength is 0 during initial load — Math.min
   // then evaluates to 0, and progress starts at 0 too, so this doesn't
   // prematurely read as "finished" before a deck has loaded.
   const isDeckFinished =
-    activeDeckLength > 0 && progress > Math.min(DECK_SIZE, activeDeckLength);
+    activeDeckLength > 0 && progress > Math.min(deckSize, activeDeckLength);
   // Same real-length cap for every place the deck's total is DISPLAYED —
   // isDeckFinished alone being capped left the counter/dots/DeckDoneCard
-  // still claiming DECK_SIZE (10), so a 3-card deck showed "1/10 … 3/10"
+  // still claiming the full deck size (10), so a 3-card deck showed "1/10 … 3/10"
   // against 10 dots (7 of which could never fill) and then a "you reviewed
-  // 10" done card. Falls back to DECK_SIZE while activeDeckLength is still
+  // 10" done card. Falls back to the deck size while activeDeckLength is still
   // 0 (nothing loaded yet), matching isDeckFinished's own load-guard.
   const displayDeckSize =
-    activeDeckLength > 0 ? Math.min(DECK_SIZE, activeDeckLength) : DECK_SIZE;
+    activeDeckLength > 0 ? Math.min(deckSize, activeDeckLength) : deckSize;
 
   // True when the current card is one we've already liked this session —
   // most commonly because "Review again" replayed the deck from the top.
@@ -710,6 +725,12 @@ export function HomeView({
   // ── Sponsor deck v2 (Tori's redesign, components/home/sponsor) ──────
   // One flag for the whole swap; the applicant-side job deck never sees it.
   const sponsorV2 = userType === "sponsor" && SPONSOR_DECK_V2;
+  // ── Applicant deck v2 (the role brief, components/home/applicant) ───
+  // The mirror of sponsor v2: same single scroll, ledger and capsule.
+  const applicantV2 = userType === "applicant" && APPLICANT_DECK_V2;
+  /** Either side on its v2 card — the shared chrome (bleed, capsule, no
+   * gauge, no plates) keys off this. */
+  const deckV2 = sponsorV2 || applicantV2;
   // The active role, enriched from myJobs (salary, arrangement, level,
   // logo, skills) — falls back to the thin store entry until it hydrates,
   // so the role row never blocks on it.
@@ -735,7 +756,7 @@ export function HomeView({
     [sponsorFacts, sponsorRole],
   );
   const plates = useMemo(() => {
-    if (!PLATES_ENABLED || !currentData || sponsorV2) return [];
+    if (!PLATES_ENABLED || !currentData || deckV2) return [];
     if (userType === "sponsor") {
       const card = currentData as ProfileDeckCard;
       const uid = card.USER_ID ? String(card.USER_ID) : "";
@@ -760,9 +781,28 @@ export function HomeView({
     activeSponsoredJobId,
     myJobs,
     profileData?.skills,
-    sponsorV2,
+    deckV2,
   ]);
   const plateAnchor = useMemo(() => deriveAnchor(plates), [plates]);
+  const jobFacts = useMemo(() => {
+    if (!applicantV2 || !currentData) return null;
+    const job = currentData as Job;
+    const sid = job.sponsorInfo?.userId ? String(job.sponsorInfo.userId) : "";
+    return buildJobFacts(
+      job,
+      (sid && sponsorProfileCache[sid]) || null,
+      profileData?.skills,
+    );
+  }, [applicantV2, currentData, sponsorProfileCache, profileData?.skills]);
+  const jobStatusLabel = !jobFacts?.id
+    ? null
+    : waitlistedJobIds.has(jobFacts.id)
+      ? "WAITLISTED"
+      : requestedSponsorJobIds.has(jobFacts.id)
+        ? "SPONSOR REQUESTED"
+        : appliedJobIds.has(jobFacts.id)
+          ? "APPLIED"
+          : null;
 
   const isAlreadyLiked =
     !!currentItemId &&
@@ -797,7 +837,7 @@ export function HomeView({
   // The hero layout's role row replaces the header pill only while a live
   // card is on screen and the role has resolved; empty/loading/done states
   // keep the pill so the sponsor can always switch roles.
-  const showDeckGauge = !sponsorV2;
+  const showDeckGauge = !deckV2;
   const showHeaderRolePill =
     userType === "sponsor" &&
     sponsoredJobs.length > 0 &&
@@ -1149,7 +1189,10 @@ export function HomeView({
     };
 
     loadData();
-  }, [userType, activeSponsoredJobId]); // Re-fetch when sponsored job changes
+    // deckRefresh: bumped when someone becomes a member mid-day, so today's
+    // 10-card deck is replaced by the 30-card one (effect below).
+  }, [userType, activeSponsoredJobId, deckRefresh]); // Re-fetch when sponsored job changes
+
 
   // Update local loading state based on store loading and whether we have data
   useEffect(() => {
@@ -1470,10 +1513,6 @@ export function HomeView({
 
     setActionPending(true);
     if (isAccept) {
-      // The stamp lands the instant the verb is pressed — a physical mark,
-      // not a network receipt — and clears itself as the card lifts.
-      setStamp(userType === "sponsor" ? "CONNECTED" : "INTERESTED");
-      setTimeout(() => setStamp(null), STAMP_MS + 900);
       // Call like API when accepting
       let didMatch = false;
       let jobGone = false;
@@ -1742,7 +1781,7 @@ export function HomeView({
 
     setTimeout(() => {
       if (everyCardLiked) {
-        setProgress(DECK_SIZE + 1); // → isDeckFinished: the "all done" state
+        setProgress(deckSize + 1); // → isDeckFinished: the "all done" state
       } else {
         setProgress(progress + 1);
         setCurrentProfileIndex(currentProfileIndex + 1);
@@ -2413,7 +2452,7 @@ export function HomeView({
                 </View>
                 <Text style={styles.emptyTitle}>Couldn&apos;t Load Roles</Text>
                 <Text style={styles.emptySub}>
-                  Something went wrong fetching your deck. Check your connection
+                  Something went wrong loading your roles. Check your connection
                   and try again.
                 </Text>
                 <TouchableOpacity
@@ -2472,7 +2511,7 @@ export function HomeView({
 
                 <Text style={styles.sponsorEmptyTitle}>You&apos;re early</Text>
                 <Text style={styles.sponsorEmptySubtitle}>
-                  We&apos;re filling the deck with roles matched to your profile.
+                  We&apos;re finding roles matched to your profile.
                   Check back tomorrow for a fresh batch.
                 </Text>
 
@@ -2576,9 +2615,9 @@ export function HomeView({
                     ref={scrollRef as any}
                     // v2's card owns its 16pt gutters (the Figma's), so its
                     // scroll bleeds through the page padding like PlateDeck.
-                    style={sponsorV2 ? styles.sponsorV2Bleed : undefined}
+                    style={deckV2 ? styles.sponsorV2Bleed : undefined}
                     contentContainerStyle={
-                      sponsorV2
+                      deckV2
                         ? styles.sponsorV2ScrollContent
                         : styles.profileScrollContent
                     }
@@ -2598,6 +2637,7 @@ export function HomeView({
                           fit={sponsorFit}
                           layout={SPONSOR_CARD_LAYOUT}
                           stageHeight={stageHeight}
+                          scrollY={plateScrollY}
                           onOpenRoleSwitcher={() => {
                             // Same in-flight guard as the header pill.
                             if (isActionPending) return;
@@ -2614,6 +2654,19 @@ export function HomeView({
                                   })
                               : undefined
                           }
+                          onReport={
+                            reportTarget?.userId
+                              ? () => setReportSheetOpen(true)
+                              : undefined
+                          }
+                        />
+                      ) : applicantV2 && jobFacts ? (
+                        <JobBriefCard
+                          key={String(currentItemId ?? "card")}
+                          facts={jobFacts}
+                          statusLabel={jobStatusLabel}
+                          stageHeight={stageHeight}
+                          scrollY={plateScrollY}
                           onReport={
                             reportTarget?.userId
                               ? () => setReportSheetOpen(true)
@@ -2656,7 +2709,8 @@ export function HomeView({
                   layout), so the floating flag stays with the old card. */}
               {!!reportTarget?.userId &&
                 !isAlreadyLiked &&
-                !(sponsorV2 && sponsorFacts) && (
+                !(sponsorV2 && sponsorFacts) &&
+                !(applicantV2 && jobFacts) && (
                 <TouchableOpacity
                   style={styles.reportFlagBtn}
                   onPress={() => setReportSheetOpen(true)}
@@ -2669,7 +2723,6 @@ export function HomeView({
                 </TouchableOpacity>
               )}
 
-              {stamp && <DecisionStamp label={stamp} />}
 
               {isAlreadyLiked ? (
                 /* "Already seen" overlay — replaces the floating Pass/
@@ -2713,7 +2766,7 @@ export function HomeView({
                 <Animated.View
                   style={[
                     styles.floatingActionsRow,
-                    sponsorV2 && styles.floatingActionsRowV2,
+                    deckV2 && styles.floatingActionsRowV2,
                     floatingActionsAnimatedStyle,
                   ]}
                   pointerEvents="box-none"
@@ -2726,9 +2779,25 @@ export function HomeView({
                       iPad this control row would otherwise stretch to
                       ~1000pt+, same phone-only oversight ScreenContainer
                       fixes for reading columns elsewhere. */}
-                  {sponsorV2 ? <ControlsFade /> : null}
                   <View style={styles.verdictBarWrap}>
-                    {sponsorV2 ? (
+                    {applicantV2 ? (
+                      /* The same capsule the sponsor decides with — the
+                         accept verb knows the card: INTERESTED, or WAITLIST
+                         for a role with no sponsor yet. */
+                      <DecisionPills
+                        passLabel="Pass"
+                        acceptLabel={jobFacts?.unsponsored ? "Waitlist" : "Interested"}
+                        onPass={() => handleSwipe(false)}
+                        onAccept={() => handleSwipe(true)}
+                        disabled={isActionPending}
+                        passAccessibilityLabel="Pass on this role"
+                        acceptAccessibilityLabel={
+                          jobFacts?.unsponsored
+                            ? "Join the waitlist for this role"
+                            : "Show interest in this role"
+                        }
+                      />
+                    ) : sponsorV2 ? (
                       /* The letterpress capsule: PASS on paper, CONNECT in ink. */
                       <DecisionPills
                         passLabel="Pass"
@@ -2798,7 +2867,7 @@ export function HomeView({
             />
             <View style={styles.overlayCenter} pointerEvents="none">
               <Animated.View
-                entering={ZoomIn.duration(400)}
+                entering={FadeIn.duration(400)}
                 style={styles.celebrationCard}
               >
                 {/* Quiet tick, not success — this fires up to 10x/day. */}

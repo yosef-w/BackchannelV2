@@ -1,5 +1,5 @@
 // ConfirmPop — the app's mid-size confirmation: an ink circle that
-// arrives with the cinema engine's backOut overshoot while a single
+// arrives with the cinema engine's settle overshoot while a single
 // pulse ring fires outward, optionally landing a haptic. The compact
 // sibling of BroadcastMoment, for confirmations INSIDE modals, sheets,
 // and flow steps ("Request sent!", "Sponsorship confirmed", deck done)
@@ -21,7 +21,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { Colors } from "@/constants/theme";
 import {
-  backOut,
+  settle,
   type CinemaBeat,
   type CinemaBeatKind,
   easeOut,
@@ -56,7 +56,7 @@ export function ConfirmPop({
   useCinemaHaptics(t, beats);
 
   const circle = useAnimatedStyle(() => {
-    const p = backOut(win(t.value, 0.05, 0.55));
+    const p = settle(win(t.value, 0.05, 0.55));
     return { opacity: Math.min(1, p * 2), transform: [{ scale: p }] };
   });
   const ring = useAnimatedStyle(() => {

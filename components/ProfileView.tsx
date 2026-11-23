@@ -1,6 +1,7 @@
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
+import { useQueryClient } from "@tanstack/react-query";
 import {
     AlertCircle,
     Bell,
@@ -40,7 +41,14 @@ import {
     View,
 } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
-import { PREMIUM_ENABLED, SPONSOR_DECK_V2 } from "@/constants/config";
+import {
+  DUAL_SIDES_ENABLED,
+  DUAL_SIDES_PREVIEW,
+  PREMIUM_ENABLED,
+  SPONSOR_DECK_V2,
+} from "@/constants/config";
+import { AccountSideCard } from "@/components/sides/AccountSideCard";
+import { switchSide, useSideSwitchStore } from "@/lib/switchSide";
 import {
     resetUser,
     trackAccountDeleted,
@@ -158,9 +166,15 @@ interface ProfileInsight {
 
 export function ProfileView({ userType }: ProfileViewProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   // Store access - must come before any useMemo that depends on it
   const clearAuth = useAuthStore((state) => state.clearAuth);
+  const authRole = useAuthStore((state) => state.role);
+  const authRoles = useAuthStore((state) => state.roles);
+  const serverSupportsSides = useSideSwitchStore(
+    (state) => state.serverSupportsSides,
+  );
   const resetJobsStore = useJobsStore((state) => state.reset);
   const clearOnboarding = useOnboardingStore((state) => state.clearProfile);
   const deviceToken = useAuthStore((state) => state.deviceToken);
@@ -2469,7 +2483,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
                     role={null}
                     fit={previewFit}
                     layout="hero"
-                    photoHeight={280}
+                    photoHeight={420}
                     tail={20}
                   />
                   <View style={styles.previewDecision} pointerEvents="none">
@@ -2592,6 +2606,22 @@ export function ProfileView({ userType }: ProfileViewProps) {
         photoMissing={isFieldMissing("profileImage")}
       />
 
+      {/* One account, two sides (docs/DUAL_SIDES.md): switch between them,
+          or add the one this account doesn't have yet. */}
+      {DUAL_SIDES_ENABLED && authRole ? (
+        <AccountSideCard
+          roles={authRoles}
+          activeRole={authRole}
+          company={sponsorData.company}
+          canAdd={serverSupportsSides || DUAL_SIDES_PREVIEW}
+          onSwitch={(to) => {
+            router.navigate("/(tabs)/home");
+            switchSide(to, queryClient, "account").catch(() => {});
+          }}
+          onAdd={() => router.push("/add-side")}
+        />
+      ) : null}
+
       {/* Status ledger — the deck cards' hairline vocabulary. STRENGTH
           replaces the old avatar completion ring; RÉSUMÉ and PROMPTS are
           the status + entry points for their editors (the upload
@@ -2628,7 +2658,7 @@ export function ProfileView({ userType }: ProfileViewProps) {
             </Text>
             <View style={cardStyles.kLedgerValueWrap}>
               <Text style={cardStyles.kLedgerValue}>
-                {resumeLastUpdated ? "On file" : "Not uploaded yet"}
+                {resumeLastUpdated ? "Uploaded" : "Not uploaded yet"}
               </Text>
               {!!resumeLastUpdated && (
                 <Text style={cardStyles.kLedgerValueSub} numberOfLines={1}>

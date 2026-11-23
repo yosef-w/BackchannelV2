@@ -394,7 +394,7 @@ function DeckVignette({
   return (
     <Breathing breath={breath}>
       <View style={styles.deckChip}>
-        <Text style={styles.deckChipText}>TODAY’S DECK · 10</Text>
+        <Text style={styles.deckChipText}>TODAY’S ROLES · 10</Text>
       </View>
       <View style={styles.deckFan}>
         <View style={[styles.deckCard, styles.deckCardLeft]}>

@@ -8,7 +8,7 @@ import { HeldLikeTile } from "./HeldLikeTile";
 import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
 import type { HeldLike } from "@/lib/heldLikes";
 import { priceAnchor } from "@/lib/premiumPricing";
-import { DAILY_LIKE_LIMITS, PREMIUM_ENABLED } from "@/constants/config";
+import { DAILY_DECK_SIZE, DAILY_LIKE_LIMITS, PREMIUM_ENABLED } from "@/constants/config";
 import { Colors, Fonts, Radii, Type } from "@/constants/theme";
 import { hitSlopTo44 } from "@/lib/responsive";
 
@@ -66,7 +66,8 @@ export function DeckDoneCard({
   const packages = useSubscriptionStore((state) => state.packages);
   const anchor = useMemo(() => priceAnchor(packages), [packages]);
 
-  const deckWord = deckSize === 10 ? "ten" : String(deckSize);
+  const deckWord =
+    deckSize === 10 ? "ten" : deckSize === 30 ? "thirty" : String(deckSize);
   // Upsell only when premium is actually purchasable — with the flag off
   // (beta), isPremium is hardwired false and every upsell CTA would be a
   // dead button, so everyone gets the caught-up card instead. Applicants
@@ -116,8 +117,8 @@ export function DeckDoneCard({
           </Text>
           <Text style={styles.sub}>
             You reviewed {deckSize}, wanted {wanted}, and could express
-            interest in {sessionLikes}. Members get {DAILY_LIKE_LIMITS.premium}{" "}
-            a day.
+            interest in {sessionLikes}. Members see {DAILY_DECK_SIZE.premium}{" "}
+            roles a day and express interest in {DAILY_LIKE_LIMITS.premium}.
           </Text>
         </>
       ) : (
@@ -182,7 +183,7 @@ export function DeckDoneCard({
       {heldCount > 0 && (
         <View style={styles.heldPanel}>
           <View style={styles.heldHeader}>
-            <Text style={styles.heldEyebrow}>HELD FOR YOU</Text>
+            <Text style={styles.heldEyebrow}>SAVED FOR YOU</Text>
             <View style={styles.heldBadge}>
               <Lock color={Colors.paper} size={9} strokeWidth={2.6} />
               <Text style={styles.heldBadgeText}>MEMBERS</Text>
@@ -213,15 +214,16 @@ export function DeckDoneCard({
             haptic={null}
             icon={<Lock color={Colors.paper} size={18} strokeWidth={2.2} />}
           />
-          <Text style={styles.gateEyebrow}>MEMBERS ONLY</Text>
+          <Text style={styles.gateEyebrow}>PREMIUM</Text>
           <Text style={styles.gateTitle}>
             {DAILY_LIKE_LIMITS.premium} a day, as a{" "}
             <Text style={styles.gateTitleAccent}>member.</Text>
           </Text>
           <Text style={styles.gateSub}>
-            Free accounts can express interest in {DAILY_LIKE_LIMITS.free}{" "}
-            roles a day. Members get {DAILY_LIKE_LIMITS.premium}, plus the
-            full job marketplace.
+            Free accounts see {DAILY_DECK_SIZE.free} roles a day and express
+            interest in {DAILY_LIKE_LIMITS.free}. Members see{" "}
+            {DAILY_DECK_SIZE.premium} and express interest in{" "}
+            {DAILY_LIKE_LIMITS.premium}, plus the full job marketplace.
           </Text>
         </View>
       )}

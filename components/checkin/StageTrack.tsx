@@ -18,7 +18,7 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withDelay,
-  withSpring,
+  Easing,
   withTiming,
 } from "react-native-reanimated";
 import { FontScale, hitSlopTo44 } from "@/lib/responsive";
@@ -70,8 +70,8 @@ function Node({
   useEffect(() => {
     scale.value =
       state === "active"
-        ? withSpring(1.25, { damping: 12, stiffness: 180 })
-        : withSpring(1, { damping: 14, stiffness: 160 });
+        ? withTiming(1.25, { duration: 200, easing: Easing.out(Easing.cubic) })
+        : withTiming(1, { duration: 200, easing: Easing.out(Easing.cubic) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
 

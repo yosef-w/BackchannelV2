@@ -1,7 +1,7 @@
 // PlanLedger — what changes when you join, as three corrections on a
 // receipt. One column: the free value appears, a strike draws through
 // it, and the member value stamps in beside it on the cinema engine's
-// backOut, row by row. Docket hairlines, serif figures, no grid.
+// settle, row by row. Docket hairlines, serif figures, no grid.
 //
 // The facts are honest to the product: free users already SEE sponsored
 // roles in the marketplace; membership is about acting on them.
@@ -16,8 +16,8 @@ import Animated, {
   withDelay,
   withTiming,
 } from "react-native-reanimated";
-import { backOut, easeOut, win } from "@/components/cinema/engine";
-import { DAILY_LIKE_LIMITS } from "@/constants/config";
+import { settle, easeOut, win } from "@/components/cinema/engine";
+import { DAILY_DECK_SIZE, DAILY_LIKE_LIMITS } from "@/constants/config";
 import { Colors, Fonts } from "@/constants/theme";
 
 interface Row {
@@ -29,6 +29,12 @@ interface Row {
 }
 
 const ROWS: Row[] = [
+  {
+    key: "Roles, per day",
+    from: String(DAILY_DECK_SIZE.free),
+    to: String(DAILY_DECK_SIZE.premium),
+    numeric: true,
+  },
   {
     key: "Interest, per day",
     from: String(DAILY_LIKE_LIMITS.free),
@@ -92,7 +98,7 @@ function LedgerRow({
     opacity: 1 - win(t.value, 0.6, 0.9) * 0.45,
   }));
   const toStyle = useAnimatedStyle(() => {
-    const p = backOut(win(t.value, 0.62, 1));
+    const p = settle(win(t.value, 0.62, 1));
     return { opacity: Math.min(1, p * 2), transform: [{ scale: 0.86 + p * 0.14 }] };
   });
 

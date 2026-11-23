@@ -28,7 +28,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import Animated, { FadeIn, SlideInRight, ZoomIn } from "react-native-reanimated";
+import Animated, { FadeIn, SlideInRight } from "react-native-reanimated";
 import { ConfirmPop } from "@/components/cinema/ConfirmPop";
 import { CharCounter } from "../ui/CharCounter";
 import { CompanyLogo } from "../ui/CompanyLogo";
@@ -330,7 +330,7 @@ export function CheckInStack({
           `Send ${summary.updated} update${summary.updated === 1 ? "" : "s"}`)
         : "Done";
     return (
-      <Animated.View entering={ZoomIn.duration(280)} style={styles.recap}>
+      <Animated.View entering={FadeIn.duration(280)} style={styles.recap}>
         {/* Silent — the submit interaction already landed the success
             haptic; doubling it here would buzz twice for one action. */}
         <ConfirmPop size={64} haptic={null} />

@@ -42,8 +42,7 @@ import {
 } from "react-native";
 import Animated, {
     FadeInDown,
-    SlideInDown,
-    SlideOutDown,
+    FadeOut,
 } from "react-native-reanimated";
 import { getRelativeTime } from "@/utils/relativeTime";
 import {
@@ -1566,8 +1565,8 @@ export function MatchesView({
       {undoToastVisible && (
         <View style={styles.undoToastWrapper} pointerEvents="box-none">
           <Animated.View
-            entering={SlideInDown.springify().damping(20)}
-            exiting={SlideOutDown.springify().damping(20)}
+            entering={FadeInDown.duration(240)}
+            exiting={FadeOut.duration(180)}
             style={styles.undoToast}
             pointerEvents="box-none"
           >
