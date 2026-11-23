@@ -1,11 +1,11 @@
 # Backend Changes Needed
 
-**Last updated:** 2026-11-22 — added §AF (one account, two sides). Before that: 2026-10-16, reconciled against both October backend batches (PRs #157–#200, all live in prod). Everything shipped is removed; only open items remain. History of what shipped lives in git and the backend's `docs/FRONTEND_HANDOFF_2026-10-16_PRELAUNCH.md`.
+**Last updated:** 2026-11-22 — reconciled against backend #204–#207 (merged 2026-11-17, `origin/develop` @ 7966d0f): §Y #2 and §F's SQL filtering are done; added §AF (one account, two sides). Before that: 2026-10-16, reconciled against both October backend batches (PRs #157–#200, all live in prod). Everything shipped is removed; only open items remain. History of what shipped lives in git and the backend's `docs/FRONTEND_HANDOFF_2026-10-16_PRELAUNCH.md`.
 
 **Frontend repo:** `BackchannelV2`
 **Backend repo:** `Backchannel-backend/BackChannel-backend`
 
-> **Open items (2026-10-16):** **Ops, launch-blocking (values emailed to Nico 2026-10-16)** — `REVENUECAT_WEBHOOK_SECRET`, `SUPPORT_EMAIL` + `MODERATION_ALERT_EMAIL` = `support@backchannel.it.com`, `DEFAULT_FROM_EMAIL` on `backchannel.it.com` in the DO prod env (§W #4, §Y #1), SPF/DKIM TXT records for `backchannel.it.com` in DO DNS (§AE #2; the mailbox itself exists now), confirm prod `FRONTEND_URL` (§AB #2). **§AE #1** AASA on `backchannel.it.com`. **§V** — only #2 (profile photos still public; résumé photos done) and #5 (answered below: keep as-is) remain, plus the Low/Info list. **§F #3** SQL-side filtering + flipping `FEED_SCOPE_SPONSOR_DECK` in prod. **§AD** #1/#2/#3/#4/#5/#6. **§X #1 / §AB #2** are the same ops item. **§Y #2/#3, §Z, §AC, §AA, §L** post-launch. **§AF** (one account, two sides) — new feature, post-launch, needs your sizing first.
+> **Open items (2026-10-16):** **Ops, launch-blocking (values emailed to Nico 2026-10-16)** — `REVENUECAT_WEBHOOK_SECRET`, `SUPPORT_EMAIL` + `MODERATION_ALERT_EMAIL` = `support@backchannel.it.com`, `DEFAULT_FROM_EMAIL` on `backchannel.it.com` in the DO prod env (§W #4, §Y #1), SPF/DKIM TXT records for `backchannel.it.com` in DO DNS (§AE #2; the mailbox itself exists now), confirm prod `FRONTEND_URL` (§AB #2). **§AE #1** AASA on `backchannel.it.com`. **§V** — only #2 (profile photos still public; résumé photos done) and #5 (answered below: keep as-is) remain, plus the Low/Info list. **§F** — code all shipped; left is flipping `FEED_SCOPE_SPONSOR_DECK` and `FEED_SCOPE_APPLICANT_DECK` on in prod. **§AD** #1/#2/#3/#4/#5/#6. **§X #1 / §AB #2** are the same ops item. **§Y #3, §Z, §AC, §AA, §L** post-launch (§Y #2 shipped 2026-11-17; the app side of it is ours, see §Y). **§AF** (one account, two sides) — new feature, post-launch, needs your sizing first.
 >
 > **Answers to the questions in your 2026-10-16 handoff (so you're unblocked):**
 > 1. **§V #5 registration enumeration — keep as-is for launch.** The explicit "email already in use" is better UX for a cold-start product, registration is already throttled 10/h/IP, and App Review doesn't require the generic response. Revisit post-launch.
@@ -101,7 +101,12 @@ The verify/reset links are built as `<FRONTEND_URL>/verify-email?token=…` and 
 
 ---
 
-## §Y — Premium: entitlement record ✅ #1 done; deck volume 🟢 post-launch (updated 2026-10-16)
+## §Y — Premium: ✅ #1 entitlement record, ✅ #2 deck volume; app side of #2 is ours (updated 2026-11-22)
+
+**Done 2026-11-17 (backend #204):** #2 — `GET /api/jobs/pack/` and `GET /api/profiles/pack/` return **30 cards instead of 10** when `billing.is_premium()` confirms the entitlement server-side (billing error degrades to 10, never 5xx; an explicit `limit` skips the lookup). Thanks — exactly the shape we asked for. **Nothing more needed from you on #2.**
+
+**Our side (not done yet, noted here so it isn't lost):** the app still caps every deck at 10 (`HomeView.tsx` `DECK_SIZE = 10`; also the push-reminder count and the "you've reviewed all ten" card). The app calls both packs without a `limit`, so Premium users already *receive* 30 — they just see the first 10. Unseen cards aren't recorded as seen (the app only records actual pass/like/waitlist), so the other 20 simply come back next time; nothing breaks meanwhile. The paywall currently promises a higher like cap only (2 → 5/day), not a bigger deck — whether to show and advertise the 30 is a product call on our side.
+
 
 **Done 2026-10-16 (backend #189, #190):** `POST /api/webhooks/revenuecat/` (Authorization header must equal `REVENUECAT_WEBHOOK_SECRET`; deliberately 404 while unset because DO's edge rewrites origin 5xx), migration 031 `billing_subscriptions`, and `IS_PREMIUM` / `PREMIUM_EXPIRES_AT` on `GET /api/profile/`. **Remaining is ops:** Yosef creates the webhook in RevenueCat and hands you the secret (see the answers block at the top). The daily like-cap stays client-side for v1 as agreed; #2/#3 below are the post-launch follow-ups that gate on `IS_PREMIUM`.
 
@@ -245,7 +250,7 @@ Then tell us — we'll flip `FRONTEND_URL` (and confirm on our side with a real 
 
 ## §V — Pre-production security audit: what's left 🟢 Low (section trimmed 2026-10-16; was 🔴)
 
-**Done and live in prod** (backend PRs #167–#175, #196, #197, #199; removed from this list): #1 pre-match PII; #3 dependency bumps incl. Django 5.2 LTS, `pip-audit` enforcing in CI; #4 admin throttle on trusted-edge IP, fails closed; #6 Django password validators at register/reset/change; #7 server-side session revocation via `users.token_version` (migration 032) + dedicated `JWT_SIGNING_KEY`; #8 waitlist throttle 10/h/IP; #9 `sponsor_email` dropped from `/api/matches/`; #10 `seed_demo_data` refuses on prod, hardcoded password removed; #11 request-sponsor throttle 20/h/user; #12 WebSocket JWT via `Sec-WebSocket-Protocol` (app switched); CI gating, Dependabot, loopback-only compose Redis. The reviewer's original framing still holds: no IDOR, parameterized SQL, bcrypt — the audit was about over-sharing, and that's now closed.
+**Done and live in prod** (backend PRs #167–#175, #196, #197, #199; removed from this list): #1 pre-match PII; #3 dependency bumps incl. Django 5.2 LTS, `pip-audit` enforcing in CI (and all open advisories cleared 2026-11-17, backend #205: certifi, DRF, filelock, twisted, snowflake-connector); #4 admin throttle on trusted-edge IP, fails closed; #6 Django password validators at register/reset/change; #7 server-side session revocation via `users.token_version` (migration 032) + dedicated `JWT_SIGNING_KEY`; #8 waitlist throttle 10/h/IP; #9 `sponsor_email` dropped from `/api/matches/`; #10 `seed_demo_data` refuses on prod, hardcoded password removed; #11 request-sponsor throttle 20/h/user; #12 WebSocket JWT via `Sec-WebSocket-Protocol` (app switched); CI gating, Dependabot, loopback-only compose Redis. The reviewer's original framing still holds: no IDOR, parameterized SQL, bcrypt — the audit was about over-sharing, and that's now closed.
 
 ### Still open
 
@@ -265,7 +270,7 @@ Then tell us — we'll flip `FRONTEND_URL` (and confirm on our side with a real 
 
 ---
 
-## §F — Feed relevance: ✅ scoring + scoping shipped; one SQL item + a flag flip left (updated 2026-10-16)
+## §F — Feed relevance: ✅ all code shipped; two prod flag flips left (updated 2026-11-22)
 
 **Status (2026-09-18):** traced end-to-end against the local backend checkout after a founder question ("if someone says they want to be a software engineer, do we show them those roles?"). Short answer: only weakly, and not for the part of the product that matters. Nothing is wrong on the frontend side — it sends no filters and renders server order — so this is entirely a backend item.
 
@@ -283,9 +288,9 @@ Then tell us — we'll flip `FRONTEND_URL` (and confirm on our side with a real 
 **Ask (in leverage order):**
 **Done 2026-10-16:** #1 sponsored jobs ranked by the same scorer (backend #194); #4 `relevance_score` (0–100 float) on every job card when the applicant has a profile, omitted otherwise — the app already renders it; #2 sponsor-deck scoping to the job (backend #195) behind `FEED_SCOPE_SPONSOR_DECK`, **currently OFF in prod**.
 
-**Left:**
-1. **Flip `FEED_SCOPE_SPONSOR_DECK` on in prod** once you're comfortable with it on dev (no response-shape change; the deck tops up from the unfiltered pool so it's never empty).
-2. **Filter in SQL, not just re-sort in Python** (original #3) — push at least skills/title predicates into the applicant job-pack query so the candidate window isn't a random slice. Post-launch.
+**Done 2026-11-17 (backend #206):** original #3, SQL-side filtering for the applicant deck — `queries/jobs.build_applicant_scope` pushes skills/title soft-predicates into both halves of `GET /api/jobs/pack/`, topped up from the unscoped pool, behind `FEED_SCOPE_APPLICANT_DECK` (**default off**). No response-shape change, so nothing to do on the app side.
+
+**Left (ops only, no code):** flip **`FEED_SCOPE_SPONSOR_DECK`** and **`FEED_SCOPE_APPLICANT_DECK`** on in prod once they look right on dev. Both top up from the unfiltered pool, so neither can empty a deck. Please tell us when each is on, so we know which deck testers are seeing.
 
 ---
 
