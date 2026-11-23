@@ -24,9 +24,10 @@
 /** The photo card's floor: one-line name + subline + room for the badge
  * (a longer name wraps and grows the card — it uses minHeight). */
 export const HERO_MIN = 160;
-/** ...and its cap: the Figma's tall portrait. Spare room on an iPad or a
- * Pro Max is left to the sections below instead of stretching the photo. */
-export const HERO_MAX = 480;
+/** ...and its cap: the Figma's tall portrait (508). Spare room on an iPad
+ * or a Pro Max is left to the sections below instead of stretching the
+ * photo. */
+export const HERO_MAX = 508;
 /** The hero opening's top padding (SponsorApplicantCard's heroWrap). */
 export const HERO_WRAP_PADDING_TOP = 8;
 /** First-render guesses for the measured role row / ledger, so the photo
@@ -82,6 +83,17 @@ export function pillsReserve(bottomOffset: number, stacked: boolean): number {
     pillsHeight(stacked) +
     PILLS_CLEARANCE
   );
+}
+
+/**
+ * Space under a card's last section when the record below the opening
+ * fades in on scroll (RevealOnScroll). The record starts behind the pills,
+ * so even a card with almost nothing under it must be able to scroll far
+ * enough for the fade to finish AND for its last line to clear the pills:
+ * the reserve the opening left, plus the fade's travel.
+ */
+export function revealTail(reserve: number, revealDistance: number): number {
+  return Math.round(reserve + revealDistance);
 }
 
 /**

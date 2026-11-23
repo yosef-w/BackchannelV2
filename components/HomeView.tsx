@@ -126,7 +126,6 @@ import {
   getDailyLikeCap,
 } from "@/constants/config";
 import {
-  ControlsFade,
   DecisionPills,
   SponsorApplicantCard,
   FLOATING_NAV_CLEARANCE,
@@ -172,6 +171,9 @@ function parseStringList(v: string | string[] | null | undefined): string[] {
   if (Array.isArray(v)) {
     return v.filter((x): x is string => typeof x === "string").map((x) => x.trim()).filter(Boolean);
   }
+  // Anything else (an object, a number) has no list to offer. The type says
+  // it can't arrive; a profile row proved otherwise and crashed the feed.
+  if (typeof v !== "string") return [];
   const trimmed = v.trim();
   if (trimmed.startsWith("[")) return parseStringList(parseVariant<string>(trimmed));
   return trimmed.split(",").map((x) => x.trim()).filter(Boolean);
@@ -2618,6 +2620,7 @@ export function HomeView({
                           fit={sponsorFit}
                           layout={SPONSOR_CARD_LAYOUT}
                           stageHeight={stageHeight}
+                          scrollY={plateScrollY}
                           onOpenRoleSwitcher={() => {
                             // Same in-flight guard as the header pill.
                             if (isActionPending) return;
@@ -2646,6 +2649,7 @@ export function HomeView({
                           facts={jobFacts}
                           statusLabel={jobStatusLabel}
                           stageHeight={stageHeight}
+                          scrollY={plateScrollY}
                           onReport={
                             reportTarget?.userId
                               ? () => setReportSheetOpen(true)
@@ -2758,7 +2762,6 @@ export function HomeView({
                       iPad this control row would otherwise stretch to
                       ~1000pt+, same phone-only oversight ScreenContainer
                       fixes for reading columns elsewhere. */}
-                  {deckV2 ? <ControlsFade /> : null}
                   <View style={styles.verdictBarWrap}>
                     {applicantV2 ? (
                       /* The same capsule the sponsor decides with — the

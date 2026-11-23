@@ -13,9 +13,10 @@ import { ApplicantHeroCard, buildApplicantFacts } from "@/components/home/sponso
 import { Colors, Fonts } from "@/constants/theme";
 import type { ProfileDeckCard } from "@/types/profiles";
 
-// A representative sponsor-side height: the hero's photo is ~0.74 of its
-// width on a typical phone (see stageLayout.heroPhotoHeight).
-const HEIGHT_RATIO = 0.74;
+// A representative sponsor-side height: the hero card is ~1.14× its width
+// on a typical phone (see stageLayout.heroPhotoHeight) — taller than wide,
+// with the name and, once they exist, the stats over its lower part.
+const HEIGHT_RATIO = 1.14;
 const MAX_WIDTH = 360;
 const SIDE_GUTTER = 48;
 

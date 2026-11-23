@@ -2,7 +2,7 @@
 //
 // The mirror of the sponsor deck's SponsorApplicantCard, so both sides of
 // the app read as one: an opening card sized to the stage above the floating
-// decision capsule, the same four-cell HeroLedger on paper under it, then a
+// decision capsule, the decisive facts in a four-cell grid ON the card, then a
 // short read in the same Eyebrow voice. Where the sponsor's opening is a
 // portrait (the person leads), this one leads with the ROLE: the company's
 // logo as the picture, the title on a band beneath it — both in the calm
@@ -20,6 +20,7 @@
 
 import { Image } from "expo-image";
 import React, { useState } from "react";
+import type { SharedValue } from "react-native-reanimated";
 import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { ExpandableText } from "@/components/ui/ExpandableText";
@@ -28,15 +29,15 @@ import { Colors, Fonts } from "@/constants/theme";
 import { FontScale, hitSlopTo44, shouldStackForFontScale } from "@/lib/responsive";
 import { openExternalUrl } from "@/lib/openExternalUrl";
 import { extractDisplayDomain } from "../../jobs/jobTransforms";
+import { RevealOnScroll, REVEAL_END } from "../RevealOnScroll";
 import { Eyebrow, QUIET_FILL } from "../sponsor/Eyebrow";
-import { HeroLedger } from "../sponsor/HeroLedger";
 import { SPONSOR_CARD_TAIL } from "../sponsor/SponsorApplicantCard";
 import {
   floatingActionsBottom,
   heroOpeningMinHeight,
   heroPhotoHeight,
-  LEDGER_ESTIMATE,
   pillsReserve,
+  revealTail,
 } from "../sponsor/stageLayout";
 import type { JobFacts, JobPassage } from "./jobFacts";
 
@@ -49,6 +50,10 @@ export interface JobBriefCardProps {
   stageHeight?: number | null;
   /** Opens the report sheet for the role's sponsor. */
   onReport?: () => void;
+  /** The deck scroll's offset. When given, the short read under the
+   * opening is hidden at the top and fades in on scroll (RevealOnScroll),
+   * as on the sponsor's card. */
+  scrollY?: SharedValue<number>;
 }
 
 // ── Disclosure row ────────────────────────────────────────────────────────
@@ -104,21 +109,32 @@ function JobBriefCardImpl({
   statusLabel = null,
   stageHeight = null,
   onReport,
+  scrollY,
 }: JobBriefCardProps) {
   const { height: windowHeight, fontScale } = useWindowDimensions();
   // Same stage math as the sponsor hero: the ink card gets what's left
   // above the floating capsule once the ledger is measured, so the ledger's
   // last row always ends a clear gap above the pills.
-  const [ledgerH, setLedgerH] = useState(LEDGER_ESTIMATE);
-  const openingMin = heroOpeningMinHeight(
-    stageHeight,
-    windowHeight,
-    pillsReserve(floatingActionsBottom(Platform.OS), shouldStackForFontScale(fontScale)),
+  const reserve = pillsReserve(
+    floatingActionsBottom(Platform.OS),
+    shouldStackForFontScale(fontScale),
   );
+  const openingMin = heroOpeningMinHeight(stageHeight, windowHeight, reserve);
   const [wayInH, setWayInH] = useState(WAY_IN_ESTIMATE);
-  const cardHeight = heroPhotoHeight(openingMin, wayInH, facts.ledger.length ? ledgerH : 0);
-  // The logo is the card's picture: as large as the panel comfortably holds.
-  const logoSize = Math.max(72, Math.min(128, Math.round(cardHeight * 0.3)));
+  // The card takes all the room above the way-in row: the facts ride on it
+  // (as the stats ride on the sponsor's photo card), nothing follows them.
+  const cardHeight = heroPhotoHeight(openingMin, wayInH, 0);
+  const cells = facts.ledger.slice(0, 4);
+  const cellRows: (typeof cells)[] = [];
+  for (let i = 0; i < cells.length; i += 2) cellRows.push(cells.slice(i, i + 2));
+  // The logo is the card's picture, so it fills the panel: as large as the
+  // panel's shorter side allows inside an 18pt margin (measured — the panel
+  // is whatever height the title and stats leave). Until the first layout
+  // it uses a guess from the card height.
+  const [panel, setPanel] = useState<{ w: number; h: number } | null>(null);
+  const logoSize = panel
+    ? Math.max(LOGO_MIN, Math.min(LOGO_MAX, Math.min(panel.w, panel.h) - LOGO_MARGIN * 2))
+    : Math.max(LOGO_MIN, Math.min(LOGO_MAX, Math.round(cardHeight * 0.36)));
 
   const s = facts.sponsor;
   const wayIn = s
@@ -143,9 +159,7 @@ function JobBriefCardImpl({
 
   return (
     <View>
-      {/* The opening owns the whole first screen: the short read starts just
-          past the fold instead of showing through under the capsule. */}
-      <View style={[styles.heroWrap, stageHeight ? { minHeight: stageHeight } : null]}>
+      <View style={styles.heroWrap}>
         {/* ── The card: the company on top, the role beneath ── */}
         <View
           style={[styles.card, { minHeight: cardHeight }]}
@@ -153,7 +167,14 @@ function JobBriefCardImpl({
           accessibilityRole="summary"
           accessibilityLabel={a11y}
         >
-          <View style={styles.logoPanel}>
+          <View
+            style={styles.logoPanel}
+            onLayout={(e) => {
+              const w = Math.round(e.nativeEvent.layout.width);
+              const h = Math.round(e.nativeEvent.layout.height);
+              setPanel((prev) => (prev && prev.w === w && prev.h === h ? prev : { w, h }));
+            }}
+          >
             <CompanyLogo
               logoUrl={facts.logoUrl}
               name={facts.company}
@@ -163,6 +184,8 @@ function JobBriefCardImpl({
               textColor={Colors.ink}
               initialFontSize={Math.round(logoSize * 0.5)}
             />
+          </View>
+          <View style={styles.band}>
             {statusLabel ? (
               <View style={styles.status}>
                 <Check size={12} color={Colors.paper} strokeWidth={3} />
@@ -171,12 +194,32 @@ function JobBriefCardImpl({
                 </Text>
               </View>
             ) : null}
-          </View>
-          <View style={styles.band}>
             <Text style={styles.title} numberOfLines={fontScale > 1.3 ? 4 : 3}>
               {facts.title}
             </Text>
             {facts.subline ? <Text style={styles.subline}>{facts.subline}</Text> : null}
+
+            {/* The decisive facts, on the card — the light twin of the
+                frosted stat grid on the sponsor's photo card. */}
+            {cellRows.length > 0 ? (
+              <View style={styles.grid}>
+                {cellRows.map((row, i) => (
+                  <View key={i} style={[styles.gridRow, i > 0 && styles.gridRowGap]}>
+                    {row.map((cell) => (
+                      <View key={cell.label} style={styles.cell}>
+                        <Text style={styles.cellLabel} numberOfLines={1}>
+                          {cell.label.toUpperCase()}
+                        </Text>
+                        <Text style={styles.cellValue} numberOfLines={2}>
+                          {cell.value}
+                        </Text>
+                      </View>
+                    ))}
+                    {row.length === 1 ? <View style={styles.cell} /> : null}
+                  </View>
+                ))}
+              </View>
+            ) : null}
           </View>
         </View>
 
@@ -215,17 +258,11 @@ function JobBriefCardImpl({
           </View>
         </View>
 
-        {/* ── The decisive facts, on paper (the sponsor deck's ledger) ── */}
-        <View
-          onLayout={(e) => {
-            const h = Math.round(e.nativeEvent.layout.height);
-            setLedgerH((prev) => (prev === h ? prev : h));
-          }}
-        >
-          <HeroLedger cells={facts.ledger} />
-        </View>
       </View>
 
+      {(() => {
+        const read = (
+          <>
       {/* ── The short read ── */}
       {facts.brief ? (
         <View style={styles.section}>
@@ -352,13 +389,25 @@ function JobBriefCardImpl({
           <Text style={styles.reportText}>Report {s.firstName}</Text>
         </Pressable>
       ) : null}
-      <View style={styles.tail} />
+          </>
+        );
+        // The read starts behind the floating capsule: hidden at the top,
+        // it fades in as the scroll begins.
+        return scrollY ? <RevealOnScroll scrollY={scrollY}>{read}</RevealOnScroll> : read;
+      })()}
+      <View
+        style={[styles.tail, scrollY ? { height: revealTail(reserve, REVEAL_END) } : null]}
+      />
     </View>
   );
 }
 
 export const JobBriefCard = React.memo(JobBriefCardImpl);
 
+/** The logo tile's limits and its margin inside the panel. */
+const LOGO_MIN = 72;
+const LOGO_MAX = 220;
+const LOGO_MARGIN = 18;
 /** First-render guess for the measured way-in row. */
 const WAY_IN_ESTIMATE = 64;
 
@@ -379,12 +428,12 @@ const styles = StyleSheet.create({
     minHeight: 120,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 20,
   },
+  // In the band above the title — the logo now fills the panel, so a
+  // badge up there would sit on top of it.
   status: {
-    position: "absolute",
-    top: 14,
-    left: 12,
+    alignSelf: "flex-start",
+    marginBottom: 10,
     minHeight: 28,
     borderRadius: 14,
     paddingHorizontal: 11,
@@ -417,6 +466,33 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: Colors.body,
     marginTop: 4,
+  },
+  // Same box, spacing and type as the sponsor card's frosted grid — on
+  // paper with a hairline instead of frost on a photo.
+  grid: {
+    marginTop: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.paper,
+    padding: 17,
+  },
+  gridRow: { flexDirection: "row", gap: 14 },
+  gridRowGap: { marginTop: 14 },
+  cell: { flex: 1, minWidth: 0 },
+  cellLabel: {
+    fontFamily: Fonts.sansMedium,
+    fontSize: 11,
+    lineHeight: 14,
+    letterSpacing: 1.5,
+    color: Colors.muted,
+  },
+  cellValue: {
+    fontFamily: Fonts.sansSemiBold,
+    fontSize: 16,
+    lineHeight: 21,
+    color: Colors.ink,
+    marginTop: 3,
   },
 
   // ── Your way in ──
