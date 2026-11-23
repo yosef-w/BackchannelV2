@@ -19,6 +19,7 @@
 // while PREMIUM_ENABLED is true, since presentPaywall() short-circuits
 // otherwise. Dormant by construction when the flag is off.
 
+import { DAILY_DECK_SIZE } from "@/constants/config";
 import { Search } from "@/components/ui/icons";
 import React, { useEffect } from "react";
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -284,7 +285,7 @@ function CelebrationScene({ onDone }: { onDone: () => void }) {
 
           <View style={styles.chipRow}>
             <Animated.View style={[styles.chip, chipDeck]}>
-              <Text style={styles.chipText}>10 A DAY</Text>
+              <Text style={styles.chipText}>{DAILY_DECK_SIZE.premium} A DAY</Text>
             </Animated.View>
             <Animated.View style={[styles.chip, chipMarket]}>
               <Text style={styles.chipText}>ALL ROLES</Text>

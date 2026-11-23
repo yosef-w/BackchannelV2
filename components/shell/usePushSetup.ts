@@ -19,7 +19,8 @@ import Constants from "expo-constants";
 import * as Notifications from "expo-notifications";
 import { useCallback, useEffect, useState } from "react";
 import { AppState, Platform } from "react-native";
-import { DECK_SIZE } from "../HomeView";
+import { getDeckSize } from "@/constants/config";
+import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
 import type { UserType } from "./ShellContext";
 
 export function usePushSetup(userType: UserType) {
@@ -151,11 +152,14 @@ export function usePushSetup(userType: UserType) {
         if (activeDeckLength === 0) return;
         // Same real-length cap HomeView uses for `displayDeckSize` — a
         // sponsor with a small applicant pool, or an applicant in a thin
-        // niche, can get fewer than DECK_SIZE (10) back from the backend.
+        // niche, can get fewer than a full deck (10, or 30 for members) back from the backend.
         // Without this, a 3-card deck the user finished got "8 roles left"
         // (DECK_SIZE - progress + 1), overstating by the exact gap between
         // the deck's real size and the assumed 10.
-        const displaySize = Math.min(DECK_SIZE, activeDeckLength);
+        const displaySize = Math.min(
+          getDeckSize(useSubscriptionStore.getState().isPremium),
+          activeDeckLength,
+        );
         const remaining = displaySize - jobsState.progress + 1;
         if (remaining > 0) {
           scheduleUnfinishedDeckReminder(remaining, userType);

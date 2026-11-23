@@ -17,7 +17,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { settle, easeOut, win } from "@/components/cinema/engine";
-import { DAILY_LIKE_LIMITS } from "@/constants/config";
+import { DAILY_DECK_SIZE, DAILY_LIKE_LIMITS } from "@/constants/config";
 import { Colors, Fonts } from "@/constants/theme";
 
 interface Row {
@@ -29,6 +29,12 @@ interface Row {
 }
 
 const ROWS: Row[] = [
+  {
+    key: "Roles, per day",
+    from: String(DAILY_DECK_SIZE.free),
+    to: String(DAILY_DECK_SIZE.premium),
+    numeric: true,
+  },
   {
     key: "Interest, per day",
     from: String(DAILY_LIKE_LIMITS.free),

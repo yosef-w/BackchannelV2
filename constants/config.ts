@@ -151,11 +151,8 @@ export const RC_ENTITLEMENT_ID = "Backchannel Pro";
 // NEEDED.md §Y — that's exactly what happened with the old "unlimited deck"
 // claim, which the enforcement never actually delivered).
 //
-// The daily *card count* (10, see HomeView's DECK_SIZE) is NOT part of this
-// object — it's currently the same for free and premium, since a genuinely
-// larger/unlimited card volume for premium needs backend support that
-// doesn't exist yet (§Y). This object only controls how many of those cards
-// a user is allowed to swipe right on per day.
+// This object only controls how many cards a user may swipe right on per
+// day. How many cards they SEE is DAILY_DECK_SIZE below.
 export const DAILY_LIKE_LIMITS = {
   free: 2,
   premium: 5,
@@ -164,6 +161,25 @@ export const DAILY_LIKE_LIMITS = {
 /** The daily like cap for a given entitlement state. */
 export function getDailyLikeCap(isPremium: boolean): number {
   return isPremium ? DAILY_LIKE_LIMITS.premium : DAILY_LIKE_LIMITS.free;
+}
+
+/**
+ * How many cards a day's deck holds, per tier — for both the applicant's
+ * job deck and the sponsor's applicant deck. Must match the backend's pack
+ * sizes (DEFAULT_*_PACK_LIMIT / PREMIUM_*_PACK_LIMIT, backend #204), which
+ * only sends the larger pack once IT has verified the subscription via the
+ * RevenueCat webhook — never on the app's say-so. The app caps the deck at
+ * whichever is smaller, this or what actually arrived, so a premium user
+ * the server doesn't know about yet simply sees 10.
+ */
+export const DAILY_DECK_SIZE = {
+  free: 10,
+  premium: 30,
+} as const;
+
+/** The deck size for a given entitlement state. */
+export function getDeckSize(isPremium: boolean): number {
+  return isPremium ? DAILY_DECK_SIZE.premium : DAILY_DECK_SIZE.free;
 }
 
 // ─── Google Places ────────────────────────────────────────────────────────────

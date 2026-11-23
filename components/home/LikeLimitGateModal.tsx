@@ -47,7 +47,7 @@ import {
   trackLikeLimitGateShown,
 } from "@/lib/analytics/mixpanel";
 import { Colors, Fonts, Radii } from "@/constants/theme";
-import { DAILY_LIKE_LIMITS } from "@/constants/config";
+import { DAILY_DECK_SIZE, DAILY_LIKE_LIMITS } from "@/constants/config";
 
 interface LikeLimitGateModalProps {
   visible: boolean;
@@ -194,7 +194,7 @@ function GateSheet({
             <Text style={[styles.sub, styles.subInk]}>
               {heldFull
                 ? "That's everything Premium can send before midnight. Unlock and they go out today."
-                : `Free accounts can express interest in ${DAILY_LIKE_LIMITS.free} roles a day.${card ? " This one is held for you." : ""} Members get ${DAILY_LIKE_LIMITS.premium}.`}
+                : `Free accounts can express interest in ${DAILY_LIKE_LIMITS.free} roles a day.${card ? " This one is held for you." : ""} Members get ${DAILY_LIKE_LIMITS.premium}, from ${DAILY_DECK_SIZE.premium} roles a day.`}
             </Text>
 
             <PlanReel style={styles.ledger} />

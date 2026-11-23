@@ -17,7 +17,7 @@ import { PlanReel } from "./PlanReel";
 import { PremiumCheckout } from "./PremiumCheckout";
 import type { HeldLike } from "@/lib/heldLikes";
 import { sheetColumn, sheetMaxHeight } from "@/lib/responsive";
-import { DAILY_LIKE_LIMITS } from "@/constants/config";
+import { DAILY_DECK_SIZE, DAILY_LIKE_LIMITS } from "@/constants/config";
 import { Colors, Fonts, Radii } from "@/constants/theme";
 
 interface PremiumSheetProps {
@@ -78,8 +78,9 @@ export function PremiumSheet({
                     <Text style={styles.titleAccent}>waiting.</Text>
                   </Text>
                   <Text style={styles.sub}>
-                    Members express interest in {DAILY_LIKE_LIMITS.premium} roles
-                    a day. Everything held today goes out the moment you join.
+                    Members see {DAILY_DECK_SIZE.premium} roles a day and express
+                    interest in {DAILY_LIKE_LIMITS.premium}. Everything held today
+                    goes out the moment you join.
                   </Text>
                   <View style={styles.heldPanel}>
                     {heldLikes.slice(0, HELD_SHOWN).map((item, i) => (
