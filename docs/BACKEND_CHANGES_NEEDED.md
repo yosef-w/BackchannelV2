@@ -5,7 +5,7 @@
 **Frontend repo:** `BackchannelV2`
 **Backend repo:** `Backchannel-backend/BackChannel-backend`
 
-> **Open items (2026-10-16):** **Ops, launch-blocking (values emailed to Nico 2026-10-16)** — `REVENUECAT_WEBHOOK_SECRET`, `SUPPORT_EMAIL` + `MODERATION_ALERT_EMAIL` = `support@backchannel.it.com`, `DEFAULT_FROM_EMAIL` on `backchannel.it.com` in the DO prod env (§W #4, §Y #1), SPF/DKIM TXT records for `backchannel.it.com` in DO DNS (§AE #2; the mailbox itself exists now), confirm prod `FRONTEND_URL` (§AB #2). **§AE #1** AASA on `backchannel.it.com`. **§V** — only #2 (profile photos still public; résumé photos done) and #5 (answered below: keep as-is) remain, plus the Low/Info list. **§F** — code all shipped; left is flipping `FEED_SCOPE_SPONSOR_DECK` and `FEED_SCOPE_APPLICANT_DECK` on in prod. **§AD** #1/#2/#3/#4/#5/#6. **§X #1 / §AB #2** are the same ops item. **§Y #3, §Z, §AC, §AA, §L** post-launch (§Y #2 shipped 2026-11-17; the app side of it is ours, see §Y). **§AF** (one account, two sides) — new feature, post-launch, needs your sizing first.
+> **Open items (2026-10-16):** **Ops, launch-blocking (values emailed to Nico 2026-10-16)** — `REVENUECAT_WEBHOOK_SECRET`, `SUPPORT_EMAIL` + `MODERATION_ALERT_EMAIL` = `support@backchannel.it.com`, `DEFAULT_FROM_EMAIL` on `backchannel.it.com` in the DO prod env (§W #4, §Y #1), SPF/DKIM TXT records for `backchannel.it.com` in DO DNS (§AE #2; the mailbox itself exists now), confirm prod `FRONTEND_URL` (§AB #2). **§AE #1** AASA on `backchannel.it.com`. **§V** — only #2 (profile photos still public; résumé photos done) and #5 (answered below: keep as-is) remain, plus the Low/Info list. **§F** — code all shipped; left is flipping `FEED_SCOPE_SPONSOR_DECK` and `FEED_SCOPE_APPLICANT_DECK` on in prod. **§AD** #1/#2/#3/#4/#5/#6. **§X #1 / §AB #2** are the same ops item. **§Y #3, §Z, §AC, §AA, §L** post-launch (§Y #2 shipped 2026-11-17, app side done 2026-11-22). **§AF** (one account, two sides) — new feature, post-launch, needs your sizing first.
 >
 > **Answers to the questions in your 2026-10-16 handoff (so you're unblocked):**
 > 1. **§V #5 registration enumeration — keep as-is for launch.** The explicit "email already in use" is better UX for a cold-start product, registration is already throttled 10/h/IP, and App Review doesn't require the generic response. Revisit post-launch.
@@ -101,11 +101,11 @@ The verify/reset links are built as `<FRONTEND_URL>/verify-email?token=…` and 
 
 ---
 
-## §Y — Premium: ✅ #1 entitlement record, ✅ #2 deck volume; app side of #2 is ours (updated 2026-11-22)
+## §Y — Premium: ✅ #1 entitlement record, ✅ #2 deck volume (backend + app) (updated 2026-11-22)
 
 **Done 2026-11-17 (backend #204):** #2 — `GET /api/jobs/pack/` and `GET /api/profiles/pack/` return **30 cards instead of 10** when `billing.is_premium()` confirms the entitlement server-side (billing error degrades to 10, never 5xx; an explicit `limit` skips the lookup). Thanks — exactly the shape we asked for. **Nothing more needed from you on #2.**
 
-**Our side (not done yet, noted here so it isn't lost):** the app still caps every deck at 10 (`HomeView.tsx` `DECK_SIZE = 10`; also the push-reminder count and the "you've reviewed all ten" card). The app calls both packs without a `limit`, so Premium users already *receive* 30 — they just see the first 10. Unseen cards aren't recorded as seen (the app only records actual pass/like/waitlist), so the other 20 simply come back next time; nothing breaks meanwhile. The paywall currently promises a higher like cap only (2 → 5/day), not a bigger deck — whether to show and advertise the 30 is a product call on our side.
+**Our side — done 2026-11-22:** the app now shows members the full 30 (free stays at 10) and the paywall advertises it alongside the like cap: 30 roles and 5 interests a day, vs 10 and 2. It still caps the deck at whatever actually arrives, so a member the server doesn't know about yet simply sees 10.
 
 
 **Done 2026-10-16 (backend #189, #190):** `POST /api/webhooks/revenuecat/` (Authorization header must equal `REVENUECAT_WEBHOOK_SECRET`; deliberately 404 while unset because DO's edge rewrites origin 5xx), migration 031 `billing_subscriptions`, and `IS_PREMIUM` / `PREMIUM_EXPIRES_AT` on `GET /api/profile/`. **Remaining is ops:** Yosef creates the webhook in RevenueCat and hands you the secret (see the answers block at the top). The daily like-cap stays client-side for v1 as agreed; #2/#3 below are the post-launch follow-ups that gate on `IS_PREMIUM`.
