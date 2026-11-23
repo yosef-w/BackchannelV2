@@ -118,6 +118,7 @@ import { ConfirmPop } from "@/components/cinema/ConfirmPop";
 import { QuietAction } from "@/components/matches/JobSheetKit";
 import {
   DAILY_LIKE_LIMITS,
+  getDeckSize,
   APPLICANT_DECK_V2,
   PLATES_ENABLED,
   PREMIUM_ENABLED,
@@ -224,9 +225,6 @@ interface HomeViewProps {
   onShowPublicProfile?: (userData: PublicProfileUserData) => void;
 }
 
-// Exported so MainApp can compute "cards remaining" for the unfinished-deck
-// local-notification reminder without duplicating this constant.
-export const DECK_SIZE = 10;
 // Horizontal padding of the deck page — PlateDeck cancels it so plates run
 // edge to edge while the full read below keeps the normal column.
 // Matches Matches/Messages tabs' outer horizontal padding — was 24 (off
@@ -357,6 +355,22 @@ export function HomeView({
   // Premium — the end-of-deck card opens our PremiumSheet (plans + purchase
   // in one sheet); a completed purchase sends the held likes below.
   const isPremium = useSubscriptionStore((state) => state.isPremium);
+  // 10 cards a day free, 30 for members (constants/config DAILY_DECK_SIZE).
+  const deckSize = getDeckSize(isPremium);
+  // Becoming a member mid-day: drop today's (10-card) deck so it's fetched
+  // again at the member size. Cards already swiped are never re-served, so
+  // the new deck is all fresh. Only on the free → member edge.
+  const [deckRefresh, setDeckRefresh] = useState(0);
+  const wasPremiumRef = useRef(isPremium);
+  useEffect(() => {
+    const was = wasPremiumRef.current;
+    wasPremiumRef.current = isPremium;
+    if (was || !isPremium) return;
+    deckCacheRef.current.clear();
+    useJobsStore.getState().setJobs([]);
+    useJobsStore.getState().resetNavigation();
+    setDeckRefresh((n) => n + 1);
+  }, [isPremium]);
   const [premiumSheetOpen, setPremiumSheetOpen] = useState(false);
 
   // Daily like cap — see constants/config.ts's DAILY_LIKE_LIMITS and
@@ -650,25 +664,25 @@ export function HomeView({
     userType === "sponsor"
       ? sponsorProfiles[currentProfileIndex % sponsorProfiles.length]
       : applicantJobs[currentProfileIndex % applicantJobs.length];
-  // Capped at the deck's ACTUAL length, not just DECK_SIZE (10) — a sponsor
+  // Capped at the deck's ACTUAL length, not just the deck size — a sponsor
   // with a small applicant pool, or an applicant in a thin niche, can
   // easily get fewer than 10 back from the backend. Without the cap,
   // currentData's index-modulo-length wraps around and starts silently
   // re-showing already-passed cards (progress keeps climbing toward 10,
-  // dishonestly implying fresh content) long before progress > DECK_SIZE
+  // dishonestly implying fresh content) long before progress > the deck size
   // would ever trip. activeDeckLength is 0 during initial load — Math.min
   // then evaluates to 0, and progress starts at 0 too, so this doesn't
   // prematurely read as "finished" before a deck has loaded.
   const isDeckFinished =
-    activeDeckLength > 0 && progress > Math.min(DECK_SIZE, activeDeckLength);
+    activeDeckLength > 0 && progress > Math.min(deckSize, activeDeckLength);
   // Same real-length cap for every place the deck's total is DISPLAYED —
   // isDeckFinished alone being capped left the counter/dots/DeckDoneCard
-  // still claiming DECK_SIZE (10), so a 3-card deck showed "1/10 … 3/10"
+  // still claiming the full deck size (10), so a 3-card deck showed "1/10 … 3/10"
   // against 10 dots (7 of which could never fill) and then a "you reviewed
-  // 10" done card. Falls back to DECK_SIZE while activeDeckLength is still
+  // 10" done card. Falls back to the deck size while activeDeckLength is still
   // 0 (nothing loaded yet), matching isDeckFinished's own load-guard.
   const displayDeckSize =
-    activeDeckLength > 0 ? Math.min(DECK_SIZE, activeDeckLength) : DECK_SIZE;
+    activeDeckLength > 0 ? Math.min(deckSize, activeDeckLength) : deckSize;
 
   // True when the current card is one we've already liked this session —
   // most commonly because "Review again" replayed the deck from the top.
@@ -1175,7 +1189,10 @@ export function HomeView({
     };
 
     loadData();
-  }, [userType, activeSponsoredJobId]); // Re-fetch when sponsored job changes
+    // deckRefresh: bumped when someone becomes a member mid-day, so today's
+    // 10-card deck is replaced by the 30-card one (effect below).
+  }, [userType, activeSponsoredJobId, deckRefresh]); // Re-fetch when sponsored job changes
+
 
   // Update local loading state based on store loading and whether we have data
   useEffect(() => {
@@ -1764,7 +1781,7 @@ export function HomeView({
 
     setTimeout(() => {
       if (everyCardLiked) {
-        setProgress(DECK_SIZE + 1); // → isDeckFinished: the "all done" state
+        setProgress(deckSize + 1); // → isDeckFinished: the "all done" state
       } else {
         setProgress(progress + 1);
         setCurrentProfileIndex(currentProfileIndex + 1);
